@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#0b3558">
+<title>Torre de Control — Mandaditos V4</title>
+<style>
+:root{
+  --navy:#0b3558; --blue:#1d70b7; --orange:#f28c28; --green:#2e9b59;
+  --yellow:#d99a00; --red:#c74444; --bg:#f4f7fa; --card:#fff; --line:#d8e0e8;
+  --text:#173042; --muted:#687887;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:var(--text)}
+header{background:var(--navy);color:#fff;padding:18px 22px;display:flex;justify-content:space-between;gap:15px;align-items:center}
+header h1{margin:0;font-size:22px} header p{margin:4px 0 0;color:#d8e7f4;font-size:13px}
+.badge{background:#fff;color:var(--navy);padding:7px 10px;border-radius:18px;font-size:12px;font-weight:700}
+main{max-width:1250px;margin:18px auto;padding:0 14px}
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:15px;box-shadow:0 2px 7px rgba(0,0,0,.04)}
+.card h2{font-size:16px;color:var(--navy);margin:0 0 12px}
+.kpi{font-size:24px;font-weight:700}.muted{color:var(--muted);font-size:12px}
+section{margin-bottom:14px}
+.formgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+label{font-size:12px;font-weight:700;color:#526473;display:block;margin-bottom:5px}
+input,select,button,textarea{font:inherit}
+input,select{width:100%;padding:9px;border:1px solid #cbd5df;border-radius:7px;background:#fff}
+button{border:0;border-radius:7px;padding:9px 12px;font-weight:700;cursor:pointer}
+.primary{background:var(--blue);color:#fff}.secondary{background:#e8eef4;color:var(--navy)}
+.danger{background:#f8e1e1;color:#9f2d2d}.small{font-size:12px;padding:7px 9px}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.tablewrap{overflow:auto}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th,td{border-bottom:1px solid var(--line);padding:8px;text-align:left;vertical-align:middle}
+th{background:#edf3f8;color:var(--navy)}
+.status{display:inline-block;border-radius:18px;padding:6px 10px;font-weight:800;font-size:12px}
+.green{background:#dff3e6;color:#19703d}.yellow{background:#fff0c7;color:#8b6200}.red{background:#f8dddd;color:#9f3030}.gray{background:#e9eef2;color:#5f6f7d}
+.result{padding:14px;border-radius:9px;margin-top:12px;border:1px solid var(--line)}
+.result h3{margin:0 0 8px}.result ul{margin:7px 0 0 18px;padding:0}
+.notice{background:#fff7e7;border:1px solid #f1d79b;padding:11px;border-radius:8px;font-size:12px}
+.tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+.tab{background:#e7edf3;color:var(--navy)} .tab.active{background:var(--navy);color:#fff}
+.panel{display:none}.panel.active{display:block}
+.footer{font-size:11px;color:var(--muted);text-align:center;padding:20px}
+@media(max-width:900px){.grid,.formgrid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:600px){.grid,.formgrid{grid-template-columns:1fr}header{display:block}.badge{display:inline-block;margin-top:10px}}
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>TORRE DE CONTROL — MANDADITOS</h1>
+    <p>V4.1 · Versión de trabajo · Tiempos manuales · Prueba en paralelo</p>
+  </div>
+  <div class="badge">VERSIÓN DE TRABAJO · SIN GOOGLE CLOUD</div>
+</header>
+
+<main>
+<section class="notice">
+  <b>Modo de prueba:</b> esta versión usa una base manual de tiempos de traslado. 
+  Los márgenes vespertinos son configurables y provisionales; deben ajustarse con datos reales de operación.
+</section>
+
+<div class="tabs">
+  <button class="tab active" onclick="showTab('inicio',this)">Inicio</button>
+  <button class="tab" onclick="showTab('evaluar',this)">Evaluar viaje</button>
+  <button class="tab" onclick="showTab('agenda',this)">Agenda</button>
+  <button class="tab" onclick="showTab('rutas',this)">Tiempos de ruta</button>
+  <button class="tab" onclick="showTab('unidades',this)">Unidades</button>
+  <button class="tab" onclick="showTab('config',this)">Configuración</button>
+</div>
+
+<section id="inicio" class="panel active">
+  <div class="grid">
+    <div class="card"><div class="muted">Unidades</div><div class="kpi" id="homeUnits">0</div><div class="muted">registradas</div></div>
+    <div class="card"><div class="muted">Disponibles</div><div class="kpi" id="homeAvailable">0</div><div class="muted">según estado actual</div></div>
+    <div class="card"><div class="muted">Servicios</div><div class="kpi" id="homeTrips">0</div><div class="muted">en agenda</div></div>
+    <div class="card"><div class="muted">Rutas</div><div class="kpi" id="homeRoutes">0</div><div class="muted">con tiempo manual</div></div>
+  </div>
+  <div class="card" style="margin-top:12px">
+    <h2>Estado de unidades</h2>
+    <p class="muted">Esta es la pantalla para comenzar. Primero revisa qué unidades están disponibles; después entra a <b>Evaluar viaje</b>.</p>
+    <div class="tablewrap">
+      <table><thead><tr><th>Unidad</th><th>Operador</th><th>Estado</th><th>Servicios hoy</th><th>Próxima disponibilidad</th></tr></thead>
+      <tbody id="homeUnitsBody"></tbody></table>
+    </div>
+  </div>
+  <div class="card" style="margin-top:12px">
+    <h2>Flujo de trabajo</h2>
+    <div class="grid">
+      <div class="card"><b>1. Unidades</b><p class="muted">Captura operador y estado.</p></div>
+      <div class="card"><b>2. Rutas</b><p class="muted">Registra tiempos manuales por zona.</p></div>
+      <div class="card"><b>3. Agenda</b><p class="muted">Carga los servicios ya programados.</p></div>
+      <div class="card"><b>4. Evaluar</b><p class="muted">Indica qué unidad cabe y propone alternativas.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="evaluar" class="panel">
+  <div class="grid">
+    <div class="card"><div class="muted">Unidades activas</div><div class="kpi" id="kpiUnits">0</div></div>
+    <div class="card"><div class="muted">Servicios registrados</div><div class="kpi" id="kpiTrips">0</div></div>
+    <div class="card"><div class="muted">Rutas manuales</div><div class="kpi" id="kpiRoutes">0</div></div>
+    <div class="card"><div class="muted">Ajuste actual</div><div class="kpi" id="kpiTraffic">+0 min</div></div>
+  </div>
+
+  <div class="card" style="margin-top:12px">
+    <h2>Nuevo viaje pendiente de evaluación</h2>
+    <div class="notice" style="margin-bottom:12px">
+      <b>Para comenzar:</b> registra primero las unidades y sus operadores, después los tiempos de las rutas que utilizas con frecuencia y finalmente la agenda del día. Si una ruta todavía no tiene tiempo, la Torre la marcará como <b>AJUSTADO</b> en vez de inventar un tiempo.
+    </div>
+    <div class="formgrid">
+      <div><label>Fecha</label><input id="newDate" type="date"></div>
+      <div><label>Hora de recolección</label><input id="newTime" type="time" value="10:00"></div>
+      <div><label>Origen / zona</label><input id="newOrigin" placeholder="Ej. Puerta Real"></div>
+      <div><label>Destino / zona</label><input id="newDest" placeholder="Ej. Tejeda"></div>
+      <div><label>Tipo de servicio</label>
+        <select id="newType"><option>Ligera</option><option selected>Normal</option><option>Pesada</option></select>
+      </div>
+      <div><label>Unidad a revisar / asignar</label>
+        <select id="preferredUnit"><option value="">Todas las unidades</option></select>
+      </div>
+    </div>
+    <div class="actions">
+      <button class="primary" onclick="evaluateTrip()">Evaluar capacidad</button>
+      <button class="secondary" onclick="clearEvaluation()">Limpiar</button>
+    </div>
+    <div id="evaluation"></div>
+  </div>
+</section>
+
+<section id="agenda" class="panel">
+  <div class="card">
+    <h2>Servicios programados</h2>
+    <div class="formgrid">
+      <div><label>Fecha</label><input id="tripDate" type="date"></div>
+      <div><label>Hora</label><input id="tripTime" type="time" value="09:00"></div>
+      <div><label>Unidad</label><select id="tripUnit"></select></div>
+      <div><label>Origen</label><input id="tripOrigin" placeholder="Zona"></div>
+      <div><label>Destino</label><input id="tripDest" placeholder="Zona"></div>
+      <div><label>Tipo</label><select id="tripType"><option>Ligera</option><option selected>Normal</option><option>Pesada</option></select></div>
+    </div>
+    <div class="actions"><button class="primary" onclick="addTrip()">Agregar servicio</button></div>
+    <div class="tablewrap" style="margin-top:12px">
+      <table><thead><tr><th>Fecha</th><th>Hora</th><th>Unidad</th><th>Origen</th><th>Destino</th><th>Tipo</th><th>Disponibilidad estimada</th><th></th></tr></thead>
+      <tbody id="agendaBody"></tbody></table>
+    </div>
+  </div>
+</section>
+
+<section id="rutas" class="panel">
+  <div class="card">
+    <h2>Base manual de tiempos de traslado</h2>
+    <p class="muted">Captura tiempos por zona/ruta. El sistema busca primero coincidencia exacta y después intenta encontrar la ruta en sentido inverso.</p>
+    <div class="formgrid">
+      <div><label>Origen</label><input id="routeOrigin" placeholder="Ej. Puerta Real"></div>
+      <div><label>Destino</label><input id="routeDest" placeholder="Ej. Centro"></div>
+      <div><label>Tiempo base (min)</label><input id="routeMin" type="number" min="1" value="20"></div>
+      <div><label>Nota</label><input id="routeNote" placeholder="Ej. horario normal"></div>
+    </div>
+    <div class="actions"><button class="primary" onclick="addRoute()">Guardar ruta</button></div>
+    <div class="tablewrap" style="margin-top:12px">
+      <table><thead><tr><th>Origen</th><th>Destino</th><th>Base</th><th>Nota</th><th></th></tr></thead>
+      <tbody id="routesBody"></tbody></table>
+    </div>
+  </div>
+</section>
+
+<section id="unidades" class="panel">
+  <div class="card">
+    <h2>Unidades y operadores</h2>
+    <div class="formgrid">
+      <div><label>Unidad</label><input id="unitName" placeholder="Ej. Changan"></div>
+      <div><label>Operador</label><input id="unitOperator" placeholder="Nombre"></div>
+      <div><label>Estado</label><select id="unitStatus"><option>Disponible</option><option>Activa</option><option>Fuera de servicio</option></select></div>
+    </div>
+    <div class="actions"><button class="primary" onclick="addUnit()">Agregar unidad</button></div>
+    <div class="tablewrap" style="margin-top:12px">
+      <table><thead><tr><th>Unidad</th><th>Operador</th><th>Estado</th><th></th></tr></thead>
+      <tbody id="unitsBody"></tbody></table>
+    </div>
+  </div>
+</section>
+
+<section id="config" class="panel">
+  <div class="card">
+    <h2>Reglas operativas</h2>
+    <div class="formgrid">
+      <div><label>Carga ligera (min)</label><input id="lightLoad" type="number" min="0"></div>
+      <div><label>Descarga ligera (min)</label><input id="lightUnload" type="number" min="0"></div>
+      <div><label>Carga normal (min)</label><input id="normalLoad" type="number" min="0"></div>
+      <div><label>Descarga normal (min)</label><input id="normalUnload" type="number" min="0"></div>
+      <div><label>Carga pesada (min)</label><input id="heavyLoad" type="number" min="0"></div>
+      <div><label>Descarga pesada (min)</label><input id="heavyUnload" type="number" min="0"></div>
+      <div><label>Seguridad por servicio (min)</label><input id="safety" type="number" min="0"></div>
+      <div><label>Inicio ajuste vespertino</label><input id="eveStart" type="time"></div>
+      <div><label>Inicio ajuste fuerte</label><input id="eveStrong" type="time"></div>
+      <div><label>Extra vespertino (min)</label><input id="eveExtra" type="number" min="0"></div>
+      <div><label>Extra fuerte (min)</label><input id="eveStrongExtra" type="number" min="0"></div>
+      <div><label>Umbral amarillo (min de holgura)</label><input id="yellowMargin" type="number" min="0"></div>
+    </div>
+    <div class="actions">
+      <button class="primary" onclick="saveConfig()">Guardar configuración</button>
+      <button class="secondary" onclick="resetConfig()">Restaurar valores iniciales</button>
+      <button class="danger" onclick="resetAllData()">Borrar datos de prueba</button>
+    </div>
+    <p class="muted" style="margin-top:10px">Valores iniciales de prueba: 15:00 = +5 min; 16:00 = +10 min. Son provisionales.</p>
+  </div>
+</section>
+
+<div class="footer">Torre de Control Mandaditos · V4 manual · Datos guardados localmente en este navegador</div>
+</main>
+
+<script>
+const KEY='mandaditos_torre_v4_manual';
+const defaults={
+  config:{lightLoad:10,lightUnload:10,normalLoad:20,normalUnload:20,heavyLoad:40,heavyUnload:40,safety:15,eveStart:'15:00',eveStrong:'16:00',eveExtra:5,eveStrongExtra:10,yellowMargin:15},
+  units:[
+    {name:'Changan',operator:'',status:'Disponible'},
+    {name:'Tornado',operator:'',status:'Disponible'},
+    {name:'S10',operator:'',status:'Disponible'},
+    {name:'S10 compartida TJ',operator:'',status:'Disponible'}
+  ],
+  routes:[],
+  trips:[]
+};
+let db=load();
+
+function load(){
+  try{return JSON.parse(localStorage.getItem(KEY))||structuredClone(defaults)}catch(e){return structuredClone(defaults)}
+}
+function save(){localStorage.setItem(KEY,JSON.stringify(db));renderAll()}
+function esc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]))}
+function today(){return new Date().toISOString().slice(0,10)}
+document.getElementById('newDate').value=today();
+document.getElementById('tripDate').value=today();
+
+function showTab(id,btn){
+  document.querySelectorAll('.panel').forEach(x=>x.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+  document.getElementById(id).classList.add('active'); btn.classList.add('active');
+}
+function minutes(t){let [h,m]=t.split(':').map(Number);return h*60+m}
+function fmtMin(n){let h=Math.floor(n/60),m=Math.round(n%60);return h?`${h} h ${m} min`:`${m} min`}
+function addM(dateStr,timeStr,mins){
+  const d=new Date(dateStr+'T'+timeStr+':00'); d.setMinutes(d.getMinutes()+mins);
+  return d;
+}
+function timeStr(d){return d.toTimeString().slice(0,5)}
+function normalize(s){return String(s||'').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'')}
+function routeTime(origin,dest,departureTime){
+  const o=normalize(origin), d=normalize(dest);
+  if(o===d)return 0;
+  let r=db.routes.find(x=>normalize(x.origin)===o && normalize(x.dest)===d);
+  let base=r?.minutes;
+  if(base==null){
+    r=db.routes.find(x=>normalize(x.origin)===d && normalize(x.dest)===o);
+    base=r?.minutes;
+  }
+  if(base==null)return null;
+  const c=db.config, dep=minutes(departureTime);
+  const strong=minutes(c.eveStrong), start=minutes(c.eveStart);
+  let extra=dep>=strong?Number(c.eveStrongExtra):dep>=start?Number(c.eveExtra):0;
+  return Number(base)+extra;
+}
+function serviceDuration(type){const c=db.config; if(type==='Ligera')return Number(c.lightLoad)+Number(c.lightUnload)+Number(c.safety); if(type==='Pesada')return Number(c.heavyLoad)+Number(c.heavyUnload)+Number(c.safety); return Number(c.normalLoad)+Number(c.normalUnload)+Number(c.safety)}
+function tripEnd(trip){
+  const route=routeTime(trip.origin,trip.dest,trip.time);
+  if(route==null)return null;
+  return addM(trip.date,trip.time,route+serviceDuration(trip.type));
+}
+function unitTrips(unit,date){return db.trips.filter(t=>t.unit===unit&&t.date===date).sort((a,b)=>minutes(a.time)-minutes(b.time))}
+
+function evaluateUnit(unit,newTrip){
+  const trips=unitTrips(unit.name,newTrip.date);
+  const candidate=[...trips,newTrip].sort((a,b)=>minutes(a.time)-minutes(b.time));
+  let lastEnd=null,lastDest=null,lastLabel=null;
+  const details=[];
+  for(const t of candidate){
+    const start=new Date(t.date+'T'+t.time+':00');
+    if(lastEnd){
+      const travel=routeTime(lastDest,t.origin,timeStr(lastEnd));
+      if(travel==null){
+        return {status:'yellow',label:'AJUSTADO',reason:`Falta registrar el tiempo de ${lastDest} → ${t.origin}.`,
+          details:[],trips:trips};
+      }
+      const ready=new Date(lastEnd.getTime()+travel*60000);
+      const gap=Math.round((start-ready)/60000);
+      if(gap<0){
+        return {status:'red',label:'NO CABE',
+          reason:`No hay tiempo suficiente para enlazar los servicios.`,
+          details:[`Disponible anterior: ${timeStr(lastEnd)}`,
+                   `Traslado adicional: ${travel} min`,
+                   `Siguiente recolección: ${t.time}`,
+                   `Faltan ${Math.abs(gap)} min`],trips:trips};
+      }
+      if(t===newTrip){
+        const threshold=Number(db.config.yellowMargin);
+        if(gap<=threshold){
+          return {status:'yellow',label:'AJUSTADO',
+            reason:`La holgura es de solo ${gap} min.`,
+            details:[`Disponible anterior: ${timeStr(lastEnd)}`,
+                     `Traslado adicional: ${travel} min`,
+                     `Holgura: ${gap} min`],trips:trips};
+        }
+      }
+      if(t===newTrip) details.push(`Holgura disponible: ${gap} min`);
+    }
+    const end=tripEnd(t);
+    if(!end){
+      return {status:'yellow',label:'AJUSTADO',
+        reason:`Falta registrar el tiempo ${t.origin} → ${t.dest}.`,
+        details:[],trips:trips};
+    }
+    if(t===newTrip) details.push(`Disponible después del viaje: ${timeStr(end)}`);
+    lastEnd=end; lastDest=t.dest; lastLabel=`${t.time} ${t.origin} → ${t.dest}`;
+  }
+  return {status:'green',label:'SÍ CABE',
+    reason:trips.length?'Existe holgura suficiente para insertar el servicio.':'Unidad sin servicios previos ese día.',
+    details:details,trips:trips};
+}
+
+function unitScheduleText(unit,date){
+  const trips=unitTrips(unit,date);
+  if(!trips.length)return 'Sin servicios programados';
+  return trips.map(t=>{
+    const end=tripEnd(t);
+    return `${t.time} ${t.origin} → ${t.dest}${end?' · disponible '+timeStr(end):' · ruta sin tiempo'}`;
+  }).join('<br>');
+}
+
+function evaluateTrip(){
+  const n={date:document.getElementById('newDate').value,
+    time:document.getElementById('newTime').value,
+    origin:document.getElementById('newOrigin').value,
+    dest:document.getElementById('newDest').value,
+    type:document.getElementById('newType').value};
+  const preferred=document.getElementById('preferredUnit').value;
+
+  if(!n.date||!n.time||!n.origin||!n.dest){
+    alert('Completa fecha, hora, origen y destino.');return;
+  }
+
+  let results=db.units.map(u=>({u,res:evaluateUnit(u,n)}));
+  const rank={green:0,yellow:1,red:2};
+  results.sort((a,b)=>rank[a.res.status]-rank[b.res.status]);
+
+  const preferredResult=preferred?results.find(x=>x.u.name===preferred):null;
+  const alternatives=results.filter(x=>x.u.name!==preferred && x.res.status==='green');
+
+  let recommendation='';
+  if(preferredResult && preferredResult.res.status!=='green'){
+    if(alternatives.length){
+      recommendation=`<div class="recommend">
+        <h4>La unidad solicitada no puede tomar este servicio.</h4>
+        <div>La Torre recomienda revisar estas alternativas:</div>
+        ${alternatives.slice(0,3).map(x=>`<span class="choice"><b>${esc(x.u.name)}</b>${x.u.operator?' · '+esc(x.u.operator):''}</span>`).join('')}
+        <div style="margin-top:9px;font-size:12px"><b>Siguiente paso:</b> tocar Base/Comercial para confirmar si el cliente acepta el cambio de unidad.</div>
+        <textarea class="copybox" id="changeMessage" readonly>El servicio de ${n.time}, ${n.origin} → ${n.dest}, no cabe en ${preferred}. Torre propone revisar ${alternatives.slice(0,3).map(x=>x.u.name).join(', ')}. Favor de confirmar con el cliente si es posible realizar el cambio de unidad.</textarea>
+        <button class="secondary small" style="margin-top:7px" onclick="copyChangeMessage()">Copiar mensaje para Base/Comercial</button>
+      </div>`;
+    } else {
+      recommendation=`<div class="result red"><b>No hay una unidad disponible que cumpla con el servicio.</b><br>
+      En este momento la Torre no encuentra una alternativa verde para la fecha y hora indicadas.</div>`;
+    }
+  } else if(!preferred && alternatives.length){
+    recommendation=`<div class="recommend">
+      <h4>Opciones disponibles</h4>
+      ${alternatives.slice(0,4).map(x=>`<span class="choice"><b>${esc(x.u.name)}</b>${x.u.operator?' · '+esc(x.u.operator):''}</span>`).join('')}
+      <div style="margin-top:7px;font-size:12px">Estas unidades pasan la evaluación con la agenda registrada.</div>
+    </div>`;
+  }
+
+  document.getElementById('evaluation').innerHTML=`<div class="result">
+    <h3>Evaluación · ${esc(n.time)} · ${esc(n.origin)} → ${esc(n.dest)}</h3>
+    ${preferredResult?`<div style="margin-bottom:10px">Unidad solicitada: <b>${esc(preferredResult.u.name)}</b> · <span class="status ${preferredResult.res.status}">${preferredResult.res.label}</span></div>`:''}
+    <div class="tablewrap"><table><thead><tr>
+      <th>Unidad</th><th>Operador</th><th>Resultado</th><th>Agenda del día</th><th>Motivo</th><th>Detalle</th>
+    </tr></thead><tbody>
+    ${results.map(x=>`<tr>
+      <td><b>${esc(x.u.name)}</b></td>
+      <td>${esc(x.u.operator||'—')}</td>
+      <td><span class="status ${x.res.status}">${x.res.label}</span></td>
+      <td>${unitScheduleText(x.u,n.date)}</td>
+      <td>${esc(x.res.reason)}</td>
+      <td>${x.res.details.map(esc).join('<br>')}</td>
+    </tr>`).join('')}
+    </tbody></table></div>
+  </div>${recommendation}`;
+}
+function copyChangeMessage(){
+  const box=document.getElementById('changeMessage');
+  if(!box)return;
+  navigator.clipboard?.writeText(box.value).then(()=>alert('Mensaje copiado.'));
+}
+
+function clearEvaluation(){document.getElementById('evaluation').innerHTML=''}
+
+function addTrip(){
+  const t={date:tripDate.value,time:tripTime.value,unit:tripUnit.value,origin:tripOrigin.value.trim(),dest:tripDest.value.trim(),type:tripType.value};
+  if(!t.date||!t.time||!t.unit||!t.origin||!t.dest){alert('Completa todos los datos del servicio.');return}
+  db.trips.push(t); save();
+  tripOrigin.value='';tripDest.value='';
+}
+function deleteTrip(i){db.trips.splice(i,1);save()}
+function addRoute(){
+  const r={origin:routeOrigin.value.trim(),dest:routeDest.value.trim(),minutes:Number(routeMin.value),note:routeNote.value.trim()};
+  if(!r.origin||!r.dest||!r.minutes){alert('Completa origen, destino y tiempo.');return}
+  const idx=db.routes.findIndex(x=>normalize(x.origin)===normalize(r.origin)&&normalize(x.dest)===normalize(r.dest));
+  if(idx>=0)db.routes[idx]=r;else db.routes.push(r);
+  save();routeOrigin.value='';routeDest.value='';routeNote.value='';
+}
+function deleteRoute(i){db.routes.splice(i,1);save()}
+function addUnit(){
+  const u={name:unitName.value.trim(),operator:unitOperator.value.trim(),status:unitStatus.value};
+  if(!u.name){alert('Captura el nombre de la unidad.');return}
+  db.units.push(u);save();unitName.value='';unitOperator.value='';
+}
+function deleteUnit(i){if(db.units.length<=1){alert('Debe existir al menos una unidad.');return}db.units.splice(i,1);save()}
+
+function loadConfigForm(){
+  const c=db.config;
+  ['lightLoad','lightUnload','normalLoad','normalUnload','heavyLoad','heavyUnload','safety','eveStart','eveStrong','eveExtra','eveStrongExtra','yellowMargin'].forEach(k=>document.getElementById(k).value=c[k]);
+}
+function saveConfig(){
+  const c=db.config;
+  ['lightLoad','lightUnload','normalLoad','normalUnload','heavyLoad','heavyUnload','safety','eveExtra','eveStrongExtra','yellowMargin'].forEach(k=>c[k]=Number(document.getElementById(k).value));
+  c.eveStart=document.getElementById('eveStart').value;c.eveStrong=document.getElementById('eveStrong').value;
+  save();alert('Configuración guardada.');
+}
+function resetConfig(){db.config=structuredClone(defaults.config);save();loadConfigForm();alert('Valores iniciales restaurados.')}
+function resetAllData(){
+  if(!confirm('Esto borrará unidades, rutas y agenda guardadas en este navegador. ¿Continuar?'))return;
+  db=structuredClone(defaults); save(); alert('Datos de prueba borrados. Las cuatro unidades iniciales permanecen disponibles.');
+}
+
+function renderAll(){
+  document.getElementById('kpiUnits').textContent=db.units.length;
+  document.getElementById('kpiTrips').textContent=db.trips.length;
+  document.getElementById('kpiRoutes').textContent=db.routes.length;
+  document.getElementById('kpiTraffic').textContent=`+${db.config.eveStrongExtra} min`;
+  const hu=document.getElementById('homeUnits');
+  const ha=document.getElementById('homeAvailable');
+  const ht=document.getElementById('homeTrips');
+  const hr=document.getElementById('homeRoutes');
+  if(hu) hu.textContent=db.units.length;
+  if(ha) ha.textContent=db.units.filter(u=>u.status==='Disponible').length;
+  if(ht) ht.textContent=db.trips.length;
+  if(hr) hr.textContent=db.routes.length;
+  const hb=document.getElementById('homeUnitsBody');
+  if(hb){
+    const d=today();
+    hb.innerHTML=db.units.map(u=>{
+      const ts=unitTrips(u.name,d);
+      const ends=ts.map(tripEnd).filter(Boolean).sort((a,b)=>a-b);
+      const next=ends.length?timeStr(ends[ends.length-1]):'Disponible';
+      const cls=u.status==='Disponible'?'green':u.status==='Activa'?'yellow':'red';
+      return `<tr><td><b>${esc(u.name)}</b></td><td>${esc(u.operator||'Sin operador')}</td><td><span class="status ${cls}">${esc(u.status)}</span></td><td>${ts.length}</td><td>${next}</td></tr>`;
+    }).join('');
+  }
+  tripUnit.innerHTML=db.units.map(u=>`<option>${esc(u.name)}</option>`).join('');
+  const currentPreferred=document.getElementById('preferredUnit')?.value||'';
+  const pref=document.getElementById('preferredUnit');
+  if(pref){
+    pref.innerHTML='<option value="">Todas las unidades</option>'+db.units.map(u=>`<option value="${esc(u.name)}">${esc(u.name)}${u.operator?' · '+esc(u.operator):''}</option>`).join('');
+    pref.value=currentPreferred;
+  }
+  agendaBody.innerHTML=db.trips.slice().sort((a,b)=>(a.date+a.time).localeCompare(b.date+b.time)).map((t,i)=>{
+    const realIndex=db.trips.indexOf(t), end=tripEnd(t);
+    return `<tr><td>${esc(t.date)}</td><td>${esc(t.time)}</td><td>${esc(t.unit)}</td><td>${esc(t.origin)}</td><td>${esc(t.dest)}</td><td>${esc(t.type)}</td><td>${end?timeStr(end):'<span class="status yellow">Sin ruta</span>'}</td><td><button class="danger small" onclick="deleteTrip(${realIndex})">Eliminar</button></td></tr>`
+  }).join('');
+  routesBody.innerHTML=db.routes.map((r,i)=>`<tr><td>${esc(r.origin)}</td><td>${esc(r.dest)}</td><td>${r.minutes} min</td><td>${esc(r.note||'—')}</td><td><button class="danger small" onclick="deleteRoute(${i})">Eliminar</button></td></tr>`).join('');
+  unitsBody.innerHTML=db.units.map((u,i)=>`<tr><td>${esc(u.name)}</td><td>${esc(u.operator||'—')}</td><td>${esc(u.status)}</td><td><button class="danger small" onclick="deleteUnit(${i})">Eliminar</button></td></tr>`).join('');
+  loadConfigForm();
+}
+renderAll();
+showTab('inicio',document.querySelector('.tab'));
+</script>
+</body>
+</html>
