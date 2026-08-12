@@ -3,9 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#0b3558">
-<title>Torre de Control — Mandaditos V4</title>
+<title>Torre de Control — Mandaditos V4.3</title>
 <style>
 :root{
   --navy:#0b3558; --blue:#1d70b7; --orange:#f28c28; --green:#2e9b59;
@@ -43,7 +42,7 @@ th{background:#edf3f8;color:var(--navy)}
 .tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
 .tab{background:#e7edf3;color:var(--navy)} .tab.active{background:var(--navy);color:#fff}
 .panel{display:none}.panel.active{display:block}
-.footer{font-size:11px;color:var(--muted);text-align:center;padding:20px}
+.recommend{padding:14px;border:1px solid var(--line);border-radius:9px;margin-top:12px;background:#fff}.choice{display:inline-block;padding:7px 10px;margin:5px 5px 0 0;border-radius:16px;background:#e8f4ec;color:#19703d;font-size:12px;font-weight:700}.footer{font-size:11px;color:var(--muted);text-align:center;padding:20px}
 @media(max-width:900px){.grid,.formgrid{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:600px){.grid,.formgrid{grid-template-columns:1fr}header{display:block}.badge{display:inline-block;margin-top:10px}}
 </style>
@@ -52,22 +51,21 @@ th{background:#edf3f8;color:var(--navy)}
 <header>
   <div>
     <h1>TORRE DE CONTROL — MANDADITOS</h1>
-    <p>V4.1 · Versión de trabajo · Tiempos manuales · Prueba en paralelo</p>
+    <p>V4.3 · Versión de trabajo · Direcciones completas · Tiempo manual</p>
   </div>
-  <div class="badge">VERSIÓN DE TRABAJO · SIN GOOGLE CLOUD</div>
+  <div class="badge">VERSIÓN DE TRABAJO · GOOGLE CLOUD PENDIENTE</div>
 </header>
 
 <main>
 <section class="notice">
-  <b>Modo de prueba:</b> esta versión usa una base manual de tiempos de traslado.
-  Los márgenes vespertinos son configurables y provisionales; deben ajustarse con datos reales de operación.
+  <b>Modo de prueba:</b> esta versión trabaja con <b>direcciones completas</b> y un <b>tiempo estimado de traslado capturado manualmente</b>.
+  Cuando Google Cloud quede activo, ese tiempo será reemplazado por el cálculo automático. Los márgenes vespertinos siguen siendo configurables y provisionales.
 </section>
 
 <div class="tabs">
   <button class="tab active" onclick="showTab('inicio',this)">Inicio</button>
   <button class="tab" onclick="showTab('evaluar',this)">Evaluar viaje</button>
   <button class="tab" onclick="showTab('agenda',this)">Agenda</button>
-  <button class="tab" onclick="showTab('rutas',this)">Tiempos de ruta</button>
   <button class="tab" onclick="showTab('unidades',this)">Unidades</button>
   <button class="tab" onclick="showTab('config',this)">Configuración</button>
 </div>
@@ -77,23 +75,23 @@ th{background:#edf3f8;color:var(--navy)}
     <div class="card"><div class="muted">Unidades</div><div class="kpi" id="homeUnits">0</div><div class="muted">registradas</div></div>
     <div class="card"><div class="muted">Disponibles</div><div class="kpi" id="homeAvailable">0</div><div class="muted">según estado actual</div></div>
     <div class="card"><div class="muted">Servicios</div><div class="kpi" id="homeTrips">0</div><div class="muted">en agenda</div></div>
-    <div class="card"><div class="muted">Rutas</div><div class="kpi" id="homeRoutes">0</div><div class="muted">con tiempo manual</div></div>
+    <div class="card"><div class="muted">Operadores</div><div class="kpi" id="homeOperators">0</div><div class="muted">registrados</div></div>
   </div>
   <div class="card" style="margin-top:12px">
     <h2>Estado de unidades</h2>
-    <p class="muted">Esta es la pantalla para comenzar. Primero revisa qué unidades están disponibles; después entra a <b>Evaluar viaje</b>.</p>
+    <p class="muted">Esta es la pantalla para comenzar. Primero revisa unidades y operadores; después entra a <b>Evaluar viaje</b>.</p>
     <div class="tablewrap">
-      <table><thead><tr><th>Unidad</th><th>Operador</th><th>Estado</th><th>Servicios hoy</th><th>Próxima disponibilidad</th></tr></thead>
+      <table><thead><tr><th>Unidad</th><th>Estado</th><th>Servicios hoy</th><th>Próxima disponibilidad</th></tr></thead>
       <tbody id="homeUnitsBody"></tbody></table>
     </div>
   </div>
   <div class="card" style="margin-top:12px">
     <h2>Flujo de trabajo</h2>
     <div class="grid">
-      <div class="card"><b>1. Unidades</b><p class="muted">Captura operador y estado.</p></div>
-      <div class="card"><b>2. Rutas</b><p class="muted">Registra tiempos manuales por zona.</p></div>
-      <div class="card"><b>3. Agenda</b><p class="muted">Carga los servicios ya programados.</p></div>
-      <div class="card"><b>4. Evaluar</b><p class="muted">Indica qué unidad cabe y propone alternativas.</p></div>
+      <div class="card"><b>1. Unidades</b><p class="muted">Catálogo y estado de vehículos.</p></div>
+      <div class="card"><b>2. Operadores</b><p class="muted">Catálogo y estado de operadores.</p></div>
+      <div class="card"><b>3. Agenda</b><p class="muted">En cada servicio eliges unidad y operador.</p></div>
+      <div class="card"><b>4. Evaluar</b><p class="muted">Captura el tiempo estimado manual y revisa capacidad.</p></div>
     </div>
   </div>
 </section>
@@ -102,25 +100,29 @@ th{background:#edf3f8;color:var(--navy)}
   <div class="grid">
     <div class="card"><div class="muted">Unidades activas</div><div class="kpi" id="kpiUnits">0</div></div>
     <div class="card"><div class="muted">Servicios registrados</div><div class="kpi" id="kpiTrips">0</div></div>
-    <div class="card"><div class="muted">Rutas manuales</div><div class="kpi" id="kpiRoutes">0</div></div>
+    <div class="card"><div class="muted">Modo de tiempo</div><div class="kpi" style="font-size:18px">MANUAL</div></div>
     <div class="card"><div class="muted">Ajuste actual</div><div class="kpi" id="kpiTraffic">+0 min</div></div>
   </div>
 
   <div class="card" style="margin-top:12px">
     <h2>Nuevo viaje pendiente de evaluación</h2>
     <div class="notice" style="margin-bottom:12px">
-      <b>Para comenzar:</b> registra primero las unidades y sus operadores, después los tiempos de las rutas que utilizas con frecuencia y finalmente la agenda del día. Si una ruta todavía no tiene tiempo, la Torre la marcará como <b>AJUSTADO</b> en vez de inventar un tiempo.
+      <b>Para comenzar:</b> registra primero las unidades y los operadores por separado. Para cada servicio captura la dirección completa de carga, la dirección completa de entrega y el <b>tiempo estimado de traslado en minutos</b>. La Torre agregará automáticamente carga, descarga, seguridad y margen vespertino. Si no capturas el tiempo, el viaje no se evaluará.
     </div>
     <div class="formgrid">
       <div><label>Fecha</label><input id="newDate" type="date"></div>
       <div><label>Hora de recolección</label><input id="newTime" type="time" value="10:00"></div>
-      <div><label>Origen / zona</label><input id="newOrigin" placeholder="Ej. Puerta Real"></div>
-      <div><label>Destino / zona</label><input id="newDest" placeholder="Ej. Tejeda"></div>
+      <div style="grid-column:span 2"><label>Dirección de carga (calle, colonia y CP)</label><input id="newOrigin" placeholder="Calle, número, colonia, C.P., Querétaro"></div>
+      <div style="grid-column:span 2"><label>Dirección de entrega (calle, colonia y CP)</label><input id="newDest" placeholder="Calle, número, colonia, C.P., Querétaro"></div>
+      <div><label>Tiempo estimado de traslado (min)</label><input id="newTravel" type="number" min="1" placeholder="Ej. 25"></div>
       <div><label>Tipo de servicio</label>
         <select id="newType"><option>Ligera</option><option selected>Normal</option><option>Pesada</option></select>
       </div>
       <div><label>Unidad a revisar / asignar</label>
         <select id="preferredUnit"><option value="">Todas las unidades</option></select>
+      </div>
+      <div><label>Operador a revisar / asignar</label>
+        <select id="preferredOperator"><option value="">Todos los operadores</option></select>
       </div>
     </div>
     <div class="actions">
@@ -138,48 +140,47 @@ th{background:#edf3f8;color:var(--navy)}
       <div><label>Fecha</label><input id="tripDate" type="date"></div>
       <div><label>Hora</label><input id="tripTime" type="time" value="09:00"></div>
       <div><label>Unidad</label><select id="tripUnit"></select></div>
-      <div><label>Origen</label><input id="tripOrigin" placeholder="Zona"></div>
-      <div><label>Destino</label><input id="tripDest" placeholder="Zona"></div>
+      <div><label>Operador</label><select id="tripOperator"></select></div>
+      <div style="grid-column:span 2"><label>Dirección de carga</label><input id="tripOrigin" placeholder="Calle, número, colonia, C.P."></div>
+      <div style="grid-column:span 2"><label>Dirección de entrega</label><input id="tripDest" placeholder="Calle, número, colonia, C.P."></div>
+      <div><label>Tiempo estimado de traslado (min)</label><input id="tripTravel" type="number" min="1" placeholder="Ej. 25"></div>
       <div><label>Tipo</label><select id="tripType"><option>Ligera</option><option selected>Normal</option><option>Pesada</option></select></div>
     </div>
     <div class="actions"><button class="primary" onclick="addTrip()">Agregar servicio</button></div>
     <div class="tablewrap" style="margin-top:12px">
-      <table><thead><tr><th>Fecha</th><th>Hora</th><th>Unidad</th><th>Origen</th><th>Destino</th><th>Tipo</th><th>Disponibilidad estimada</th><th></th></tr></thead>
+      <table><thead><tr><th>Fecha</th><th>Hora</th><th>Unidad</th><th>Operador</th><th>Carga</th><th>Entrega</th><th>Traslado</th><th>Tipo</th><th>Disponible</th><th></th></tr></thead>
       <tbody id="agendaBody"></tbody></table>
     </div>
   </div>
 </section>
 
-<section id="rutas" class="panel">
-  <div class="card">
-    <h2>Base manual de tiempos de traslado</h2>
-    <p class="muted">Captura tiempos por zona/ruta. El sistema busca primero coincidencia exacta y después intenta encontrar la ruta en sentido inverso.</p>
-    <div class="formgrid">
-      <div><label>Origen</label><input id="routeOrigin" placeholder="Ej. Puerta Real"></div>
-      <div><label>Destino</label><input id="routeDest" placeholder="Ej. Centro"></div>
-      <div><label>Tiempo base (min)</label><input id="routeMin" type="number" min="1" value="20"></div>
-      <div><label>Nota</label><input id="routeNote" placeholder="Ej. horario normal"></div>
-    </div>
-    <div class="actions"><button class="primary" onclick="addRoute()">Guardar ruta</button></div>
-    <div class="tablewrap" style="margin-top:12px">
-      <table><thead><tr><th>Origen</th><th>Destino</th><th>Base</th><th>Nota</th><th></th></tr></thead>
-      <tbody id="routesBody"></tbody></table>
-    </div>
-  </div>
-</section>
 
 <section id="unidades" class="panel">
   <div class="card">
-    <h2>Unidades y operadores</h2>
+    <h2>Unidades</h2>
+    <p class="muted">Las unidades son un catálogo independiente. El operador se asigna por servicio y puede cambiar durante el día.</p>
     <div class="formgrid">
       <div><label>Unidad</label><input id="unitName" placeholder="Ej. Changan"></div>
-      <div><label>Operador</label><input id="unitOperator" placeholder="Nombre"></div>
       <div><label>Estado</label><select id="unitStatus"><option>Disponible</option><option>Activa</option><option>Fuera de servicio</option></select></div>
     </div>
     <div class="actions"><button class="primary" onclick="addUnit()">Agregar unidad</button></div>
     <div class="tablewrap" style="margin-top:12px">
-      <table><thead><tr><th>Unidad</th><th>Operador</th><th>Estado</th><th></th></tr></thead>
+      <table><thead><tr><th>Unidad</th><th>Estado</th><th></th></tr></thead>
       <tbody id="unitsBody"></tbody></table>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:12px">
+    <h2>Operadores</h2>
+    <p class="muted">Los operadores son independientes de las unidades. Un mismo operador puede cambiar de unidad durante el día.</p>
+    <div class="formgrid">
+      <div><label>Operador</label><input id="operatorName" placeholder="Nombre del operador"></div>
+      <div><label>Estado</label><select id="operatorStatus"><option>Disponible</option><option>Activo</option><option>Fuera de servicio</option></select></div>
+    </div>
+    <div class="actions"><button class="primary" onclick="addOperator()">Agregar operador</button></div>
+    <div class="tablewrap" style="margin-top:12px">
+      <table><thead><tr><th>Operador</th><th>Estado</th><th></th></tr></thead>
+      <tbody id="operatorsBody"></tbody></table>
     </div>
   </div>
 </section>
@@ -195,6 +196,7 @@ th{background:#edf3f8;color:var(--navy)}
       <div><label>Carga pesada (min)</label><input id="heavyLoad" type="number" min="0"></div>
       <div><label>Descarga pesada (min)</label><input id="heavyUnload" type="number" min="0"></div>
       <div><label>Seguridad por servicio (min)</label><input id="safety" type="number" min="0"></div>
+      <div><label>Margen mínimo entre servicios (min)</label><input id="serviceBuffer" type="number" min="0"></div>
       <div><label>Inicio ajuste vespertino</label><input id="eveStart" type="time"></div>
       <div><label>Inicio ajuste fuerte</label><input id="eveStrong" type="time"></div>
       <div><label>Extra vespertino (min)</label><input id="eveExtra" type="number" min="0"></div>
@@ -206,646 +208,58 @@ th{background:#edf3f8;color:var(--navy)}
       <button class="secondary" onclick="resetConfig()">Restaurar valores iniciales</button>
       <button class="danger" onclick="resetAllData()">Borrar datos de prueba</button>
     </div>
-    <p class="muted" style="margin-top:10px">Valores iniciales de prueba: 15:00 = +5 min; 16:00 = +10 min. Son provisionales.</p>
+    <p class="muted" style="margin-top:10px">Valores iniciales: 15:00 = +5 min; 16:00 = +10 min; separación mínima entre servicios = 15 min. Son provisionales.</p>
   </div>
 </section>
 
-<div class="footer">Torre de Control Mandaditos · V4 manual · Datos guardados localmente en este navegador</div>
+<div class="footer">Torre de Control Mandaditos · V4.3 manual · Datos guardados localmente en este navegador</div>
 </main>
 
 <script>
 'use strict';
-
-const KEY='mandaditos_torre_v4_manual';
-
+const KEY='mandaditos_torre_v43_manual';
 const defaults={
-  config:{
-    lightLoad:10,lightUnload:10,normalLoad:20,normalUnload:20,
-    heavyLoad:40,heavyUnload:40,safety:15,
-    eveStart:'15:00',eveStrong:'16:00',
-    eveExtra:5,eveStrongExtra:10,yellowMargin:15
-  },
-  units:[
-    {name:'Changan',operator:'',status:'Disponible'},
-    {name:'Tornado',operator:'',status:'Disponible'},
-    {name:'S10-08 Caja Seca',operator:'',status:'Disponible'},
-   {name:'S10-12 Redilas',operator:'',status:'Disponible'}
-  ],
-  routes:[],
-  trips:[]
+  config:{lightLoad:10,lightUnload:10,normalLoad:20,normalUnload:20,heavyLoad:40,heavyUnload:40,safety:15,serviceBuffer:15,eveStart:'15:00',eveStrong:'16:00',eveExtra:5,eveStrongExtra:10,yellowMargin:15},
+  units:[{name:'Changan',status:'Disponible'},{name:'Tornado',status:'Disponible'},{name:'S10-08 Caja Seca',status:'Disponible'},{name:'S10-12 Redilas',status:'Disponible'}],
+  operators:[],trips:[]
 };
-
 let db=load();
-
-/*
-  CORRECCIÓN V4.1:
-  No se depende de variables globales creadas automáticamente por los
-  atributos id="" del HTML. Esto evita fallos especialmente en Safari.
-*/
-const tripDate=document.getElementById('tripDate');
-const tripTime=document.getElementById('tripTime');
-const tripUnit=document.getElementById('tripUnit');
-const tripOrigin=document.getElementById('tripOrigin');
-const tripDest=document.getElementById('tripDest');
-const tripType=document.getElementById('tripType');
-
-const agendaBody=document.getElementById('agendaBody');
-const routesBody=document.getElementById('routesBody');
-const unitsBody=document.getElementById('unitsBody');
-
-const routeOrigin=document.getElementById('routeOrigin');
-const routeDest=document.getElementById('routeDest');
-const routeMin=document.getElementById('routeMin');
-const routeNote=document.getElementById('routeNote');
-
-const unitName=document.getElementById('unitName');
-const unitOperator=document.getElementById('unitOperator');
-const unitStatus=document.getElementById('unitStatus');
-
-const newDate=document.getElementById('newDate');
-const newTime=document.getElementById('newTime');
-const newOrigin=document.getElementById('newOrigin');
-const newDest=document.getElementById('newDest');
-const newType=document.getElementById('newType');
-const preferredUnit=document.getElementById('preferredUnit');
-const evaluation=document.getElementById('evaluation');
-
-function load(){
-  try{
-    const stored=localStorage.getItem(KEY);
-    if(!stored)return structuredClone(defaults);
-    const parsed=JSON.parse(stored);
-    return {
-      config:{...defaults.config,...(parsed.config||{})},
-      units:Array.isArray(parsed.units)?parsed.units:structuredClone(defaults.units),
-      routes:Array.isArray(parsed.routes)?parsed.routes:[],
-      trips:Array.isArray(parsed.trips)?parsed.trips:[]
-    };
-  }catch(e){
-    return structuredClone(defaults);
-  }
-}
-
-function save(){
-  localStorage.setItem(KEY,JSON.stringify(db));
-  renderAll();
-}
-
-function esc(s){
-  return String(s??'').replace(/[&<>"']/g,m=>({
-    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'
-  }[m]));
-}
-
-function today(){
-  return new Date().toISOString().slice(0,10);
-}
-
-newDate.value=today();
-tripDate.value=today();
-
-function showTab(id,btn){
-  document.querySelectorAll('.panel').forEach(x=>x.classList.remove('active'));
-  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
-  const panel=document.getElementById(id);
-  if(panel)panel.classList.add('active');
-  if(btn)btn.classList.add('active');
-}
-
-function minutes(t){
-  let [h,m]=String(t||'00:00').split(':').map(Number);
-  return h*60+m;
-}
-
-function fmtMin(n){
-  let h=Math.floor(n/60),m=Math.round(n%60);
-  return h?`${h} h ${m} min`:`${m} min`;
-}
-
-function addM(dateStr,timeStr,mins){
-  const d=new Date(dateStr+'T'+timeStr+':00');
-  d.setMinutes(d.getMinutes()+mins);
-  return d;
-}
-
-function timeStr(d){
-  return d.toTimeString().slice(0,5);
-}
-
-function normalize(s){
-  return String(s||'').trim().toLowerCase()
-    .normalize('NFD').replace(/[\u0300-\u036f]/g,'');
-}
-
-function routeTime(origin,dest,departureTime){
-  const o=normalize(origin),d=normalize(dest);
-  if(o===d)return 0;
-
-  let r=db.routes.find(x=>normalize(x.origin)===o && normalize(x.dest)===d);
-  let base=r?.minutes;
-
-  if(base==null){
-    r=db.routes.find(x=>normalize(x.origin)===d && normalize(x.dest)===o);
-    base=r?.minutes;
-  }
-
-  if(base==null)return null;
-
-  const c=db.config;
-  const dep=minutes(departureTime);
-  const strong=minutes(c.eveStrong);
-  const start=minutes(c.eveStart);
-
-  let extra=dep>=strong
-    ?Number(c.eveStrongExtra)
-    :dep>=start
-      ?Number(c.eveExtra)
-      :0;
-
-  return Number(base)+extra;
-}
-
-function serviceDuration(type){
-  const c=db.config;
-  if(type==='Ligera')
-    return Number(c.lightLoad)+Number(c.lightUnload)+Number(c.safety);
-  if(type==='Pesada')
-    return Number(c.heavyLoad)+Number(c.heavyUnload)+Number(c.safety);
-  return Number(c.normalLoad)+Number(c.normalUnload)+Number(c.safety);
-}
-
-function tripEnd(trip){
-  const route=routeTime(trip.origin,trip.dest,trip.time);
-  if(route==null)return null;
-  return addM(trip.date,trip.time,route+serviceDuration(trip.type));
-}
-
-function unitTrips(unit,date){
-  return db.trips
-    .filter(t=>t.unit===unit&&t.date===date)
-    .sort((a,b)=>minutes(a.time)-minutes(b.time));
-}
-
-function evaluateUnit(unit,newTrip){
-  const trips=unitTrips(unit.name,newTrip.date);
-  const candidate=[...trips,newTrip]
-    .sort((a,b)=>minutes(a.time)-minutes(b.time));
-
-  let lastEnd=null,lastDest=null;
-  const details=[];
-
-  for(const t of candidate){
-    const start=new Date(t.date+'T'+t.time+':00');
-
-    if(lastEnd){
-      const travel=routeTime(lastDest,t.origin,timeStr(lastEnd));
-
-      if(travel==null){
-        return {
-          status:'yellow',
-          label:'AJUSTADO',
-          reason:`Falta registrar el tiempo de ${lastDest} → ${t.origin}.`,
-          details:[],
-          trips:trips
-        };
-      }
-
-      const ready=new Date(lastEnd.getTime()+travel*60000);
-      const gap=Math.round((start-ready)/60000);
-
-      if(gap<0){
-        return {
-          status:'red',
-          label:'NO CABE',
-          reason:'No hay tiempo suficiente para enlazar los servicios.',
-          details:[
-            `Disponible anterior: ${timeStr(lastEnd)}`,
-            `Traslado adicional: ${travel} min`,
-            `Siguiente recolección: ${t.time}`,
-            `Faltan ${Math.abs(gap)} min`
-          ],
-          trips:trips
-        };
-      }
-
-      if(t===newTrip){
-        const threshold=Number(db.config.yellowMargin);
-        if(gap<=threshold){
-          return {
-            status:'yellow',
-            label:'AJUSTADO',
-            reason:`La holgura es de solo ${gap} min.`,
-            details:[
-              `Disponible anterior: ${timeStr(lastEnd)}`,
-              `Traslado adicional: ${travel} min`,
-              `Holgura: ${gap} min`
-            ],
-            trips:trips
-          };
-        }
-      }
-
-      if(t===newTrip)details.push(`Holgura disponible: ${gap} min`);
-    }
-
-    const end=tripEnd(t);
-
-    if(!end){
-      return {
-        status:'yellow',
-        label:'AJUSTADO',
-        reason:`Falta registrar el tiempo ${t.origin} → ${t.dest}.`,
-        details:[],
-        trips:trips
-      };
-    }
-
-    if(t===newTrip)
-      details.push(`Disponible después del viaje: ${timeStr(end)}`);
-
-    lastEnd=end;
-    lastDest=t.dest;
-  }
-
-  return {
-    status:'green',
-    label:'SÍ CABE',
-    reason:trips.length
-      ?'Existe holgura suficiente para insertar el servicio.'
-      :'Unidad sin servicios previos ese día.',
-    details:details,
-    trips:trips
-  };
-}
-
-function unitScheduleText(unit,date){
-  const trips=unitTrips(unit,date);
-  if(!trips.length)return 'Sin servicios programados';
-
-  return trips.map(t=>{
-    const end=tripEnd(t);
-    return `${esc(t.time)} ${esc(t.origin)} → ${esc(t.dest)}${end?' · disponible '+timeStr(end):' · ruta sin tiempo'}`;
-  }).join('<br>');
-}
-
-function evaluateTrip(){
-  const n={
-    date:newDate.value,
-    time:newTime.value,
-    origin:newOrigin.value,
-    dest:newDest.value,
-    type:newType.value
-  };
-
-  const preferred=preferredUnit.value;
-
-  if(!n.date||!n.time||!n.origin||!n.dest){
-    alert('Completa fecha, hora, origen y destino.');
-    return;
-  }
-
-  let results=db.units.map(u=>({
-    u,
-    res:evaluateUnit(u,n)
-  }));
-
-  const rank={green:0,yellow:1,red:2};
-  results.sort((a,b)=>rank[a.res.status]-rank[b.res.status]);
-
-  const preferredResult=preferred
-    ?results.find(x=>x.u.name===preferred)
-    :null;
-
-  const alternatives=results.filter(
-    x=>x.u.name!==preferred && x.res.status==='green'
-  );
-
-  let recommendation='';
-
-  if(preferredResult && preferredResult.res.status!=='green'){
-    if(alternatives.length){
-      recommendation=`<div class="recommend">
-        <h4>La unidad solicitada no puede tomar este servicio.</h4>
-        <div>La Torre recomienda revisar estas alternativas:</div>
-        ${alternatives.slice(0,3).map(x=>`
-          <span class="choice"><b>${esc(x.u.name)}</b>${x.u.operator?' · '+esc(x.u.operator):''}</span>
-        `).join('')}
-        <div style="margin-top:9px;font-size:12px">
-          <b>Siguiente paso:</b> tocar Base/Comercial para confirmar si el cliente acepta el cambio de unidad.
-        </div>
-        <textarea class="copybox" id="changeMessage" readonly>El servicio de ${esc(n.time)}, ${esc(n.origin)} → ${esc(n.dest)}, no cabe en ${esc(preferred)}. Torre propone revisar ${alternatives.slice(0,3).map(x=>x.u.name).join(', ')}. Favor de confirmar con el cliente si es posible realizar el cambio de unidad.</textarea>
-        <button class="secondary small" style="margin-top:7px" onclick="copyChangeMessage()">Copiar mensaje para Base/Comercial</button>
-      </div>`;
-    }else{
-      recommendation=`<div class="result red">
-        <b>No hay una unidad disponible que cumpla con el servicio.</b><br>
-        En este momento la Torre no encuentra una alternativa verde para la fecha y hora indicadas.
-      </div>`;
-    }
-  }else if(!preferred && alternatives.length){
-    recommendation=`<div class="recommend">
-      <h4>Opciones disponibles</h4>
-      ${alternatives.slice(0,4).map(x=>`
-        <span class="choice"><b>${esc(x.u.name)}</b>${x.u.operator?' · '+esc(x.u.operator):''}</span>
-      `).join('')}
-      <div style="margin-top:7px;font-size:12px">
-        Estas unidades pasan la evaluación con la agenda registrada.
-      </div>
-    </div>`;
-  }
-
-  evaluation.innerHTML=`<div class="result">
-    <h3>Evaluación · ${esc(n.time)} · ${esc(n.origin)} → ${esc(n.dest)}</h3>
-    ${preferredResult?`
-      <div style="margin-bottom:10px">
-        Unidad solicitada: <b>${esc(preferredResult.u.name)}</b> ·
-        <span class="status ${preferredResult.res.status}">${preferredResult.res.label}</span>
-      </div>`:''}
-    <div class="tablewrap">
-      <table>
-        <thead><tr>
-          <th>Unidad</th><th>Operador</th><th>Resultado</th>
-          <th>Agenda del día</th><th>Motivo</th><th>Detalle</th>
-        </tr></thead>
-        <tbody>
-        ${results.map(x=>`<tr>
-          <td><b>${esc(x.u.name)}</b></td>
-          <td>${esc(x.u.operator||'—')}</td>
-          <td><span class="status ${x.res.status}">${x.res.label}</span></td>
-          <td>${unitScheduleText(x.u,n.date)}</td>
-          <td>${esc(x.res.reason)}</td>
-          <td>${x.res.details.map(esc).join('<br>')}</td>
-        </tr>`).join('')}
-        </tbody>
-      </table>
-    </div>
-  </div>${recommendation}`;
-}
-
-function copyChangeMessage(){
-  const box=document.getElementById('changeMessage');
-  if(!box)return;
-
-  if(navigator.clipboard && navigator.clipboard.writeText){
-    navigator.clipboard.writeText(box.value)
-      .then(()=>alert('Mensaje copiado.'))
-      .catch(()=>fallbackCopy(box));
-  }else{
-    fallbackCopy(box);
-  }
-}
-
-function fallbackCopy(box){
-  box.focus();
-  box.select();
-  try{
-    document.execCommand('copy');
-    alert('Mensaje copiado.');
-  }catch(e){
-    alert('Selecciona y copia el mensaje manualmente.');
-  }
-}
-
-function clearEvaluation(){
-  evaluation.innerHTML='';
-}
-
-function addTrip(){
-  const t={
-    date:tripDate.value,
-    time:tripTime.value,
-    unit:tripUnit.value,
-    origin:tripOrigin.value.trim(),
-    dest:tripDest.value.trim(),
-    type:tripType.value
-  };
-
-  if(!t.date||!t.time||!t.unit||!t.origin||!t.dest){
-    alert('Completa todos los datos del servicio.');
-    return;
-  }
-
-  db.trips.push(t);
-  save();
-  tripOrigin.value='';
-  tripDest.value='';
-}
-
-function deleteTrip(i){
-  db.trips.splice(i,1);
-  save();
-}
-
-function addRoute(){
-  const r={
-    origin:routeOrigin.value.trim(),
-    dest:routeDest.value.trim(),
-    minutes:Number(routeMin.value),
-    note:routeNote.value.trim()
-  };
-
-  if(!r.origin||!r.dest||!r.minutes){
-    alert('Completa origen, destino y tiempo.');
-    return;
-  }
-
-  const idx=db.routes.findIndex(
-    x=>normalize(x.origin)===normalize(r.origin) &&
-       normalize(x.dest)===normalize(r.dest)
-  );
-
-  if(idx>=0)db.routes[idx]=r;
-  else db.routes.push(r);
-
-  save();
-  routeOrigin.value='';
-  routeDest.value='';
-  routeNote.value='';
-}
-
-function deleteRoute(i){
-  db.routes.splice(i,1);
-  save();
-}
-
-function addUnit(){
-  const u={
-    name:unitName.value.trim(),
-    operator:unitOperator.value.trim(),
-    status:unitStatus.value
-  };
-
-  if(!u.name){
-    alert('Captura el nombre de la unidad.');
-    return;
-  }
-
-  db.units.push(u);
-  save();
-  unitName.value='';
-  unitOperator.value='';
-}
-
-function deleteUnit(i){
-  if(db.units.length<=1){
-    alert('Debe existir al menos una unidad.');
-    return;
-  }
-
-  db.units.splice(i,1);
-  save();
-}
-
-function loadConfigForm(){
-  const c=db.config;
-
-  [
-    'lightLoad','lightUnload','normalLoad','normalUnload',
-    'heavyLoad','heavyUnload','safety','eveStart','eveStrong',
-    'eveExtra','eveStrongExtra','yellowMargin'
-  ].forEach(k=>{
-    const el=document.getElementById(k);
-    if(el)el.value=c[k];
-  });
-}
-
-function saveConfig(){
-  const c=db.config;
-
-  [
-    'lightLoad','lightUnload','normalLoad','normalUnload',
-    'heavyLoad','heavyUnload','safety',
-    'eveExtra','eveStrongExtra','yellowMargin'
-  ].forEach(k=>{
-    c[k]=Number(document.getElementById(k).value);
-  });
-
-  c.eveStart=document.getElementById('eveStart').value;
-  c.eveStrong=document.getElementById('eveStrong').value;
-
-  save();
-  alert('Configuración guardada.');
-}
-
-function resetConfig(){
-  db.config=structuredClone(defaults.config);
-  save();
-  loadConfigForm();
-  alert('Valores iniciales restaurados.');
-}
-
-function resetAllData(){
-  if(!confirm('Esto borrará unidades, rutas y agenda guardadas en este navegador. ¿Continuar?'))
-    return;
-
-  db=structuredClone(defaults);
-  save();
-  alert('Datos de prueba borrados. Las cuatro unidades iniciales permanecen disponibles.');
-}
-
-function renderAll(){
-  const kpiUnits=document.getElementById('kpiUnits');
-  const kpiTrips=document.getElementById('kpiTrips');
-  const kpiRoutes=document.getElementById('kpiRoutes');
-  const kpiTraffic=document.getElementById('kpiTraffic');
-
-  if(kpiUnits)kpiUnits.textContent=db.units.length;
-  if(kpiTrips)kpiTrips.textContent=db.trips.length;
-  if(kpiRoutes)kpiRoutes.textContent=db.routes.length;
-  if(kpiTraffic)kpiTraffic.textContent=`+${db.config.eveStrongExtra} min`;
-
-  const hu=document.getElementById('homeUnits');
-  const ha=document.getElementById('homeAvailable');
-  const ht=document.getElementById('homeTrips');
-  const hr=document.getElementById('homeRoutes');
-
-  if(hu)hu.textContent=db.units.length;
-  if(ha)ha.textContent=db.units.filter(u=>u.status==='Disponible').length;
-  if(ht)ht.textContent=db.trips.length;
-  if(hr)hr.textContent=db.routes.length;
-
-  const hb=document.getElementById('homeUnitsBody');
-
-  if(hb){
-    const d=today();
-
-    hb.innerHTML=db.units.map(u=>{
-      const ts=unitTrips(u.name,d);
-      const ends=ts.map(tripEnd).filter(Boolean).sort((a,b)=>a-b);
-      const next=ends.length?timeStr(ends[ends.length-1]):'Disponible';
-      const cls=u.status==='Disponible'
-        ?'green'
-        :u.status==='Activa'
-          ?'yellow'
-          :'red';
-
-      return `<tr>
-        <td><b>${esc(u.name)}</b></td>
-        <td>${esc(u.operator||'Sin operador')}</td>
-        <td><span class="status ${cls}">${esc(u.status)}</span></td>
-        <td>${ts.length}</td>
-        <td>${next}</td>
-      </tr>`;
-    }).join('');
-  }
-
-  tripUnit.innerHTML=db.units
-    .map(u=>`<option>${esc(u.name)}</option>`)
-    .join('');
-
-  const currentPreferred=preferredUnit.value||'';
-
-  preferredUnit.innerHTML=
-    '<option value="">Todas las unidades</option>'+
-    db.units.map(u=>
-      `<option value="${esc(u.name)}">${esc(u.name)}${u.operator?' · '+esc(u.operator):''}</option>`
-    ).join('');
-
-  preferredUnit.value=currentPreferred;
-
-  agendaBody.innerHTML=db.trips
-    .slice()
-    .sort((a,b)=>(a.date+a.time).localeCompare(b.date+b.time))
-    .map(t=>{
-      const realIndex=db.trips.indexOf(t);
-      const end=tripEnd(t);
-
-      return `<tr>
-        <td>${esc(t.date)}</td>
-        <td>${esc(t.time)}</td>
-        <td>${esc(t.unit)}</td>
-        <td>${esc(t.origin)}</td>
-        <td>${esc(t.dest)}</td>
-        <td>${esc(t.type)}</td>
-        <td>${end?timeStr(end):'<span class="status yellow">Sin ruta</span>'}</td>
-        <td><button class="danger small" onclick="deleteTrip(${realIndex})">Eliminar</button></td>
-      </tr>`;
-    }).join('');
-
-  routesBody.innerHTML=db.routes.map((r,i)=>
-    `<tr>
-      <td>${esc(r.origin)}</td>
-      <td>${esc(r.dest)}</td>
-      <td>${r.minutes} min</td>
-      <td>${esc(r.note||'—')}</td>
-      <td><button class="danger small" onclick="deleteRoute(${i})">Eliminar</button></td>
-    </tr>`
-  ).join('');
-
-  unitsBody.innerHTML=db.units.map((u,i)=>
-    `<tr>
-      <td>${esc(u.name)}</td>
-      <td>${esc(u.operator||'—')}</td>
-      <td>${esc(u.status)}</td>
-      <td><button class="danger small" onclick="deleteUnit(${i})">Eliminar</button></td>
-    </tr>`
-  ).join('');
-
-  loadConfigForm();
-}
-
-renderAll();
-showTab('inicio',document.querySelector('.tab'));
+const tripDate=document.getElementById('tripDate'),tripTime=document.getElementById('tripTime'),tripUnit=document.getElementById('tripUnit'),tripOperator=document.getElementById('tripOperator'),tripOrigin=document.getElementById('tripOrigin'),tripDest=document.getElementById('tripDest'),tripTravel=document.getElementById('tripTravel'),tripType=document.getElementById('tripType');
+const agendaBody=document.getElementById('agendaBody'),unitsBody=document.getElementById('unitsBody'),operatorsBody=document.getElementById('operatorsBody');
+const unitName=document.getElementById('unitName'),unitStatus=document.getElementById('unitStatus'),operatorName=document.getElementById('operatorName'),operatorStatus=document.getElementById('operatorStatus');
+const newDate=document.getElementById('newDate'),newTime=document.getElementById('newTime'),newOrigin=document.getElementById('newOrigin'),newDest=document.getElementById('newDest'),newTravel=document.getElementById('newTravel'),newType=document.getElementById('newType'),preferredUnit=document.getElementById('preferredUnit'),preferredOperator=document.getElementById('preferredOperator'),evaluation=document.getElementById('evaluation');
+function load(){try{const stored=localStorage.getItem(KEY);if(!stored)return structuredClone(defaults);const p=JSON.parse(stored);return{config:{...defaults.config,...(p.config||{})},units:Array.isArray(p.units)?p.units.map(u=>({name:u.name,status:u.status||'Disponible'})):structuredClone(defaults.units),operators:Array.isArray(p.operators)?p.operators:[],trips:Array.isArray(p.trips)?p.trips:[]};}catch(e){return structuredClone(defaults)}}
+function save(){localStorage.setItem(KEY,JSON.stringify(db));renderAll()}
+function esc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]))}
+function today(){return new Date().toISOString().slice(0,10)}
+newDate.value=today();tripDate.value=today();
+function showTab(id,btn){document.querySelectorAll('.panel').forEach(x=>x.classList.remove('active'));document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));const p=document.getElementById(id);if(p)p.classList.add('active');if(btn)btn.classList.add('active')}
+function minutes(t){let [h,m]=String(t||'00:00').split(':').map(Number);return h*60+m}
+function fmtMin(n){n=Math.max(0,Math.round(Number(n)||0));let h=Math.floor(n/60),m=n%60;return h?`${h} h ${m} min`:`${m} min`}
+function addM(dateStr,timeStr,mins){const d=new Date(dateStr+'T'+timeStr+':00');d.setMinutes(d.getMinutes()+Number(mins||0));return d}
+function timeStr(d){return d.toTimeString().slice(0,5)}
+function serviceDuration(type){const c=db.config;if(type==='Ligera')return Number(c.lightLoad)+Number(c.lightUnload)+Number(c.safety);if(type==='Pesada')return Number(c.heavyLoad)+Number(c.heavyUnload)+Number(c.safety);return Number(c.normalLoad)+Number(c.normalUnload)+Number(c.safety)}
+function trafficExtra(time){const c=db.config,dep=minutes(time);return dep>=minutes(c.eveStrong)?Number(c.eveStrongExtra):dep>=minutes(c.eveStart)?Number(c.eveExtra):0}
+function totalDuration(trip){return Number(trip.travel)+serviceDuration(trip.type)+trafficExtra(trip.time)}
+function tripEnd(trip){if(!Number(trip.travel)||Number(trip.travel)<1)return null;return addM(trip.date,trip.time,totalDuration(trip))}
+function unitTrips(unit,date){return db.trips.filter(t=>t.unit===unit&&t.date===date).sort((a,b)=>minutes(a.time)-minutes(b.time))}
+function operatorTrips(op,date){return db.trips.filter(t=>t.operator===op&&t.date===date).sort((a,b)=>minutes(a.time)-minutes(b.time))}
+function evaluateSchedule(trips,newTrip,label){const candidate=[...trips,newTrip].sort((a,b)=>minutes(a.time)-minutes(b.time));let lastEnd=null;const details=[];for(const t of candidate){const start=new Date(t.date+'T'+t.time+':00');if(lastEnd){const gap=Math.round((start-lastEnd)/60000)-Number(db.config.serviceBuffer||0);if(gap<0)return{status:'red',label:'NO CABE',reason:`${label}: no hay tiempo suficiente entre servicios.`,details:[`Disponible anterior: ${timeStr(lastEnd)}`,`Separación mínima: ${db.config.serviceBuffer} min`,`Siguiente recolección: ${t.time}`,`Faltan ${Math.abs(gap)} min`]};if(t===newTrip&&gap<=Number(db.config.yellowMargin))return{status:'yellow',label:'AJUSTADO',reason:`${label}: la holgura operativa es de solo ${gap} min.`,details:[`Disponible anterior: ${timeStr(lastEnd)}`,`Holgura después de separación mínima: ${gap} min`]};if(t===newTrip)details.push(`Holgura disponible: ${gap} min`)}const end=tripEnd(t);if(!end)return{status:'yellow',label:'AJUSTADO',reason:`${label}: falta el tiempo estimado de traslado del servicio.`,details:[]};if(t===newTrip){details.push(`Traslado estimado: ${t.travel} min`);details.push(`Margen vespertino: +${trafficExtra(t.time)} min`);details.push(`Tiempo operativo total: ${fmtMin(totalDuration(t))}`);details.push(`Disponible después del viaje: ${timeStr(end)}`)}lastEnd=end}return{status:'green',label:'SÍ CABE',reason:`${label}: sin conflicto de agenda.`,details}}
+function evaluateAssignment(unit,operator,newTrip){const ur=evaluateSchedule(unitTrips(unit.name,newTrip.date),newTrip,`Unidad ${unit.name}`),or=evaluateSchedule(operatorTrips(operator.name,newTrip.date),newTrip,`Operador ${operator.name}`);const status=ur.status==='red'||or.status==='red'?'red':ur.status==='yellow'||or.status==='yellow'?'yellow':'green';return{status,label:status==='green'?'SÍ CABE':status==='yellow'?'AJUSTADO':'NO CABE',unit:ur,operator:or}}
+function evaluateTrip(){const n={date:newDate.value,time:newTime.value,origin:newOrigin.value.trim(),dest:newDest.value.trim(),travel:Number(newTravel.value),type:newType.value};const pu=preferredUnit.value,po=preferredOperator.value;if(!n.date||!n.time||!n.origin||!n.dest||!n.travel){alert('Completa fecha, hora, dirección de carga, dirección de entrega y tiempo estimado de traslado.');return}const units=db.units.filter(u=>u.status!=='Fuera de servicio'&&(!pu||u.name===pu));const ops=db.operators.filter(o=>o.status!=='Fuera de servicio'&&(!po||o.name===po));if(!ops.length){evaluation.innerHTML='<div class="result yellow"><b>No hay operadores disponibles en el catálogo.</b><br>Ve a <b>Unidades</b> y registra al menos un operador.</div>';return}if(!units.length){evaluation.innerHTML='<div class="result yellow"><b>No hay unidades disponibles en el catálogo.</b><br>Ve a <b>Unidades</b> y registra al menos una unidad.</div>';return}const results=[];units.forEach(u=>ops.forEach(o=>results.push({u,o,res:evaluateAssignment(u,o,n)})));const rank={green:0,yellow:1,red:2};results.sort((a,b)=>rank[a.res.status]-rank[b.res.status]);const greens=results.filter(x=>x.res.status==='green');const rows=results.map(x=>`<tr><td><b>${esc(x.u.name)}</b></td><td>${esc(x.o.name)}</td><td><span class="status ${x.res.status}">${x.res.label}</span></td><td>${esc(x.res.unit.reason)}<br>${esc(x.res.operator.reason)}</td><td>${[...x.res.unit.details,...x.res.operator.details].map(esc).join('<br>')}</td></tr>`).join('');const end=tripEnd(n);const recommendation=greens.length?`<div class="recommend"><h4>Combinaciones disponibles</h4>${greens.slice(0,8).map(x=>`<span class="choice"><b>${esc(x.u.name)}</b> + ${esc(x.o.name)}</span>`).join('')}<div style="margin-top:7px;font-size:12px">La unidad y el operador se evalúan por separado; el mismo operador puede cambiar de unidad durante el día.</div></div>`:'<div class="result red"><b>No hay una combinación disponible que cumpla con el servicio.</b></div>';evaluation.innerHTML=`<div class="result"><h3>Evaluación · ${esc(n.time)} · Carga → Entrega</h3><ul><li><b>Traslado manual:</b> ${fmtMin(n.travel)}</li><li><b>Margen vespertino:</b> +${trafficExtra(n.time)} min</li><li><b>Tiempo operativo total:</b> ${fmtMin(totalDuration(n))}</li><li><b>Disponible después:</b> ${end?timeStr(end):'—'}</li></ul><div class="tablewrap"><table><thead><tr><th>Unidad</th><th>Operador</th><th>Resultado</th><th>Motivo</th><th>Detalle</th></tr></thead><tbody>${rows}</tbody></table></div></div>${recommendation}`}
+function clearEvaluation(){evaluation.innerHTML=''}
+function addTrip(){const t={date:tripDate.value,time:tripTime.value,unit:tripUnit.value,operator:tripOperator.value,origin:tripOrigin.value.trim(),dest:tripDest.value.trim(),travel:Number(tripTravel.value),type:tripType.value};if(!t.date||!t.time||!t.unit||!t.operator||!t.origin||!t.dest||!t.travel){alert('Completa fecha, hora, unidad, operador, direcciones y tiempo estimado de traslado.');return}const check=evaluateAssignment(db.units.find(u=>u.name===t.unit),db.operators.find(o=>o.name===t.operator),t);if(check.status==='red'&&!confirm('El servicio tiene un conflicto de capacidad. ¿Quieres agregarlo de todos modos?'))return;db.trips.push(t);save();tripOrigin.value='';tripDest.value='';tripTravel.value=''}
+function deleteTrip(i){db.trips.splice(i,1);save()}
+function addUnit(){const u={name:unitName.value.trim(),status:unitStatus.value};if(!u.name){alert('Captura el nombre de la unidad.');return}if(db.units.some(x=>x.name.toLowerCase()===u.name.toLowerCase())){alert('Esa unidad ya está registrada.');return}db.units.push(u);save();unitName.value=''}
+function deleteUnit(i){if(db.units.length<=1){alert('Debe existir al menos una unidad.');return}db.units.splice(i,1);save()}
+function addOperator(){const o={name:operatorName.value.trim(),status:operatorStatus.value};if(!o.name){alert('Captura el nombre del operador.');return}if(db.operators.some(x=>x.name.toLowerCase()===o.name.toLowerCase())){alert('Ese operador ya está registrado.');return}db.operators.push(o);save();operatorName.value=''}
+function deleteOperator(i){db.operators.splice(i,1);save()}
+function loadConfigForm(){const c=db.config;['lightLoad','lightUnload','normalLoad','normalUnload','heavyLoad','heavyUnload','safety','serviceBuffer','eveStart','eveStrong','eveExtra','eveStrongExtra','yellowMargin'].forEach(k=>{const el=document.getElementById(k);if(el)el.value=c[k]})}
+function saveConfig(){const c=db.config;['lightLoad','lightUnload','normalLoad','normalUnload','heavyLoad','heavyUnload','safety','serviceBuffer','eveExtra','eveStrongExtra','yellowMargin'].forEach(k=>c[k]=Number(document.getElementById(k).value));c.eveStart=document.getElementById('eveStart').value;c.eveStrong=document.getElementById('eveStrong').value;save();alert('Configuración guardada.')}
+function resetConfig(){db.config=structuredClone(defaults.config);save();loadConfigForm();alert('Valores iniciales restaurados.')}
+function resetAllData(){if(!confirm('Esto borrará unidades, operadores y agenda guardados en este navegador. ¿Continuar?'))return;db=structuredClone(defaults);save();alert('Datos de prueba borrados. Las cuatro unidades iniciales permanecen; el catálogo de operadores queda vacío.')}
+function renderAll(){const ku=document.getElementById('kpiUnits'),kt=document.getElementById('kpiTrips'),ktraffic=document.getElementById('kpiTraffic');if(ku)ku.textContent=db.units.length;if(kt)kt.textContent=db.trips.length;if(ktraffic)ktraffic.textContent=`+${db.config.eveStrongExtra} min`;document.getElementById('homeUnits').textContent=db.units.length;document.getElementById('homeAvailable').textContent=db.units.filter(u=>u.status==='Disponible').length;document.getElementById('homeTrips').textContent=db.trips.length;document.getElementById('homeOperators').textContent=db.operators.length;const hb=document.getElementById('homeUnitsBody'),d=today();hb.innerHTML=db.units.map(u=>{const ts=unitTrips(u.name,d),ends=ts.map(tripEnd).filter(Boolean).sort((a,b)=>a-b),next=ends.length?timeStr(ends[ends.length-1]):'Disponible',cls=u.status==='Disponible'?'green':u.status==='Activa'?'yellow':'red';return`<tr><td><b>${esc(u.name)}</b></td><td><span class="status ${cls}">${esc(u.status)}</span></td><td>${ts.length}</td><td>${next}</td></tr>`}).join('');const cu=tripUnit.value,co=tripOperator.value;tripUnit.innerHTML=db.units.filter(u=>u.status!=='Fuera de servicio').map(u=>`<option value="${esc(u.name)}">${esc(u.name)}</option>`).join('');if([...tripUnit.options].some(o=>o.value===cu))tripUnit.value=cu;tripOperator.innerHTML=db.operators.filter(o=>o.status!=='Fuera de servicio').map(o=>`<option value="${esc(o.name)}">${esc(o.name)}</option>`).join('');if([...tripOperator.options].some(o=>o.value===co))tripOperator.value=co;const pU=preferredUnit.value,pO=preferredOperator.value;preferredUnit.innerHTML='<option value="">Todas las unidades</option>'+db.units.filter(u=>u.status!=='Fuera de servicio').map(u=>`<option value="${esc(u.name)}">${esc(u.name)}</option>`).join('');if([...preferredUnit.options].some(o=>o.value===pU))preferredUnit.value=pU;preferredOperator.innerHTML='<option value="">Todos los operadores</option>'+db.operators.filter(o=>o.status!=='Fuera de servicio').map(o=>`<option value="${esc(o.name)}">${esc(o.name)}</option>`).join('');if([...preferredOperator.options].some(o=>o.value===pO))preferredOperator.value=pO;agendaBody.innerHTML=db.trips.slice().sort((a,b)=>(a.date+a.time).localeCompare(b.date+b.time)).map(t=>{const i=db.trips.indexOf(t),end=tripEnd(t);return`<tr><td>${esc(t.date)}</td><td>${esc(t.time)}</td><td>${esc(t.unit)}</td><td>${esc(t.operator||'—')}</td><td>${esc(t.origin)}</td><td>${esc(t.dest)}</td><td>${fmtMin(t.travel)}</td><td>${esc(t.type)}</td><td>${end?timeStr(end):'<span class="status yellow">Sin cálculo</span>'}</td><td><button class="danger small" onclick="deleteTrip(${i})">Eliminar</button></td></tr>`}).join('');unitsBody.innerHTML=db.units.map((u,i)=>`<tr><td>${esc(u.name)}</td><td>${esc(u.status)}</td><td><button class="danger small" onclick="deleteUnit(${i})">Eliminar</button></td></tr>`).join('');operatorsBody.innerHTML=db.operators.map((o,i)=>`<tr><td>${esc(o.name)}</td><td>${esc(o.status)}</td><td><button class="danger small" onclick="deleteOperator(${i})">Eliminar</button></td></tr>`).join('');loadConfigForm()}
+renderAll();showTab('inicio',document.querySelector('.tab'));
 </script>
 </body>
 </html>
