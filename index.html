@@ -59,7 +59,7 @@ th{background:#edf3f8;color:var(--navy)}
 
 <main>
 <section class="notice">
-  <b>Modo de prueba:</b> esta versión usa una base manual de tiempos de traslado. 
+  <b>Modo de prueba:</b> esta versión usa una base manual de tiempos de traslado.
   Los márgenes vespertinos son configurables y provisionales; deben ajustarse con datos reales de operación.
 </section>
 
@@ -214,9 +214,17 @@ th{background:#edf3f8;color:var(--navy)}
 </main>
 
 <script>
+'use strict';
+
 const KEY='mandaditos_torre_v4_manual';
+
 const defaults={
-  config:{lightLoad:10,lightUnload:10,normalLoad:20,normalUnload:20,heavyLoad:40,heavyUnload:40,safety:15,eveStart:'15:00',eveStrong:'16:00',eveExtra:5,eveStrongExtra:10,yellowMargin:15},
+  config:{
+    lightLoad:10,lightUnload:10,normalLoad:20,normalUnload:20,
+    heavyLoad:40,heavyUnload:40,safety:15,
+    eveStart:'15:00',eveStrong:'16:00',
+    eveExtra:5,eveStrongExtra:10,yellowMargin:15
+  },
   units:[
     {name:'Changan',operator:'',status:'Disponible'},
     {name:'Tornado',operator:'',status:'Disponible'},
@@ -226,255 +234,616 @@ const defaults={
   routes:[],
   trips:[]
 };
+
 let db=load();
 
+/*
+  CORRECCIÓN V4.1:
+  No se depende de variables globales creadas automáticamente por los
+  atributos id="" del HTML. Esto evita fallos especialmente en Safari.
+*/
+const tripDate=document.getElementById('tripDate');
+const tripTime=document.getElementById('tripTime');
+const tripUnit=document.getElementById('tripUnit');
+const tripOrigin=document.getElementById('tripOrigin');
+const tripDest=document.getElementById('tripDest');
+const tripType=document.getElementById('tripType');
+
+const agendaBody=document.getElementById('agendaBody');
+const routesBody=document.getElementById('routesBody');
+const unitsBody=document.getElementById('unitsBody');
+
+const routeOrigin=document.getElementById('routeOrigin');
+const routeDest=document.getElementById('routeDest');
+const routeMin=document.getElementById('routeMin');
+const routeNote=document.getElementById('routeNote');
+
+const unitName=document.getElementById('unitName');
+const unitOperator=document.getElementById('unitOperator');
+const unitStatus=document.getElementById('unitStatus');
+
+const newDate=document.getElementById('newDate');
+const newTime=document.getElementById('newTime');
+const newOrigin=document.getElementById('newOrigin');
+const newDest=document.getElementById('newDest');
+const newType=document.getElementById('newType');
+const preferredUnit=document.getElementById('preferredUnit');
+const evaluation=document.getElementById('evaluation');
+
 function load(){
-  try{return JSON.parse(localStorage.getItem(KEY))||structuredClone(defaults)}catch(e){return structuredClone(defaults)}
+  try{
+    const stored=localStorage.getItem(KEY);
+    if(!stored)return structuredClone(defaults);
+    const parsed=JSON.parse(stored);
+    return {
+      config:{...defaults.config,...(parsed.config||{})},
+      units:Array.isArray(parsed.units)?parsed.units:structuredClone(defaults.units),
+      routes:Array.isArray(parsed.routes)?parsed.routes:[],
+      trips:Array.isArray(parsed.trips)?parsed.trips:[]
+    };
+  }catch(e){
+    return structuredClone(defaults);
+  }
 }
-function save(){localStorage.setItem(KEY,JSON.stringify(db));renderAll()}
-function esc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]))}
-function today(){return new Date().toISOString().slice(0,10)}
-document.getElementById('newDate').value=today();
-document.getElementById('tripDate').value=today();
+
+function save(){
+  localStorage.setItem(KEY,JSON.stringify(db));
+  renderAll();
+}
+
+function esc(s){
+  return String(s??'').replace(/[&<>"']/g,m=>({
+    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'
+  }[m]));
+}
+
+function today(){
+  return new Date().toISOString().slice(0,10);
+}
+
+newDate.value=today();
+tripDate.value=today();
 
 function showTab(id,btn){
   document.querySelectorAll('.panel').forEach(x=>x.classList.remove('active'));
   document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
-  document.getElementById(id).classList.add('active'); btn.classList.add('active');
+  const panel=document.getElementById(id);
+  if(panel)panel.classList.add('active');
+  if(btn)btn.classList.add('active');
 }
-function minutes(t){let [h,m]=t.split(':').map(Number);return h*60+m}
-function fmtMin(n){let h=Math.floor(n/60),m=Math.round(n%60);return h?`${h} h ${m} min`:`${m} min`}
+
+function minutes(t){
+  let [h,m]=String(t||'00:00').split(':').map(Number);
+  return h*60+m;
+}
+
+function fmtMin(n){
+  let h=Math.floor(n/60),m=Math.round(n%60);
+  return h?`${h} h ${m} min`:`${m} min`;
+}
+
 function addM(dateStr,timeStr,mins){
-  const d=new Date(dateStr+'T'+timeStr+':00'); d.setMinutes(d.getMinutes()+mins);
+  const d=new Date(dateStr+'T'+timeStr+':00');
+  d.setMinutes(d.getMinutes()+mins);
   return d;
 }
-function timeStr(d){return d.toTimeString().slice(0,5)}
-function normalize(s){return String(s||'').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'')}
+
+function timeStr(d){
+  return d.toTimeString().slice(0,5);
+}
+
+function normalize(s){
+  return String(s||'').trim().toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+}
+
 function routeTime(origin,dest,departureTime){
-  const o=normalize(origin), d=normalize(dest);
+  const o=normalize(origin),d=normalize(dest);
   if(o===d)return 0;
+
   let r=db.routes.find(x=>normalize(x.origin)===o && normalize(x.dest)===d);
   let base=r?.minutes;
+
   if(base==null){
     r=db.routes.find(x=>normalize(x.origin)===d && normalize(x.dest)===o);
     base=r?.minutes;
   }
+
   if(base==null)return null;
-  const c=db.config, dep=minutes(departureTime);
-  const strong=minutes(c.eveStrong), start=minutes(c.eveStart);
-  let extra=dep>=strong?Number(c.eveStrongExtra):dep>=start?Number(c.eveExtra):0;
+
+  const c=db.config;
+  const dep=minutes(departureTime);
+  const strong=minutes(c.eveStrong);
+  const start=minutes(c.eveStart);
+
+  let extra=dep>=strong
+    ?Number(c.eveStrongExtra)
+    :dep>=start
+      ?Number(c.eveExtra)
+      :0;
+
   return Number(base)+extra;
 }
-function serviceDuration(type){const c=db.config; if(type==='Ligera')return Number(c.lightLoad)+Number(c.lightUnload)+Number(c.safety); if(type==='Pesada')return Number(c.heavyLoad)+Number(c.heavyUnload)+Number(c.safety); return Number(c.normalLoad)+Number(c.normalUnload)+Number(c.safety)}
+
+function serviceDuration(type){
+  const c=db.config;
+  if(type==='Ligera')
+    return Number(c.lightLoad)+Number(c.lightUnload)+Number(c.safety);
+  if(type==='Pesada')
+    return Number(c.heavyLoad)+Number(c.heavyUnload)+Number(c.safety);
+  return Number(c.normalLoad)+Number(c.normalUnload)+Number(c.safety);
+}
+
 function tripEnd(trip){
   const route=routeTime(trip.origin,trip.dest,trip.time);
   if(route==null)return null;
   return addM(trip.date,trip.time,route+serviceDuration(trip.type));
 }
-function unitTrips(unit,date){return db.trips.filter(t=>t.unit===unit&&t.date===date).sort((a,b)=>minutes(a.time)-minutes(b.time))}
+
+function unitTrips(unit,date){
+  return db.trips
+    .filter(t=>t.unit===unit&&t.date===date)
+    .sort((a,b)=>minutes(a.time)-minutes(b.time));
+}
 
 function evaluateUnit(unit,newTrip){
   const trips=unitTrips(unit.name,newTrip.date);
-  const candidate=[...trips,newTrip].sort((a,b)=>minutes(a.time)-minutes(b.time));
-  let lastEnd=null,lastDest=null,lastLabel=null;
+  const candidate=[...trips,newTrip]
+    .sort((a,b)=>minutes(a.time)-minutes(b.time));
+
+  let lastEnd=null,lastDest=null;
   const details=[];
+
   for(const t of candidate){
     const start=new Date(t.date+'T'+t.time+':00');
+
     if(lastEnd){
       const travel=routeTime(lastDest,t.origin,timeStr(lastEnd));
+
       if(travel==null){
-        return {status:'yellow',label:'AJUSTADO',reason:`Falta registrar el tiempo de ${lastDest} → ${t.origin}.`,
-          details:[],trips:trips};
+        return {
+          status:'yellow',
+          label:'AJUSTADO',
+          reason:`Falta registrar el tiempo de ${lastDest} → ${t.origin}.`,
+          details:[],
+          trips:trips
+        };
       }
+
       const ready=new Date(lastEnd.getTime()+travel*60000);
       const gap=Math.round((start-ready)/60000);
+
       if(gap<0){
-        return {status:'red',label:'NO CABE',
-          reason:`No hay tiempo suficiente para enlazar los servicios.`,
-          details:[`Disponible anterior: ${timeStr(lastEnd)}`,
-                   `Traslado adicional: ${travel} min`,
-                   `Siguiente recolección: ${t.time}`,
-                   `Faltan ${Math.abs(gap)} min`],trips:trips};
+        return {
+          status:'red',
+          label:'NO CABE',
+          reason:'No hay tiempo suficiente para enlazar los servicios.',
+          details:[
+            `Disponible anterior: ${timeStr(lastEnd)}`,
+            `Traslado adicional: ${travel} min`,
+            `Siguiente recolección: ${t.time}`,
+            `Faltan ${Math.abs(gap)} min`
+          ],
+          trips:trips
+        };
       }
+
       if(t===newTrip){
         const threshold=Number(db.config.yellowMargin);
         if(gap<=threshold){
-          return {status:'yellow',label:'AJUSTADO',
+          return {
+            status:'yellow',
+            label:'AJUSTADO',
             reason:`La holgura es de solo ${gap} min.`,
-            details:[`Disponible anterior: ${timeStr(lastEnd)}`,
-                     `Traslado adicional: ${travel} min`,
-                     `Holgura: ${gap} min`],trips:trips};
+            details:[
+              `Disponible anterior: ${timeStr(lastEnd)}`,
+              `Traslado adicional: ${travel} min`,
+              `Holgura: ${gap} min`
+            ],
+            trips:trips
+          };
         }
       }
-      if(t===newTrip) details.push(`Holgura disponible: ${gap} min`);
+
+      if(t===newTrip)details.push(`Holgura disponible: ${gap} min`);
     }
+
     const end=tripEnd(t);
+
     if(!end){
-      return {status:'yellow',label:'AJUSTADO',
+      return {
+        status:'yellow',
+        label:'AJUSTADO',
         reason:`Falta registrar el tiempo ${t.origin} → ${t.dest}.`,
-        details:[],trips:trips};
+        details:[],
+        trips:trips
+      };
     }
-    if(t===newTrip) details.push(`Disponible después del viaje: ${timeStr(end)}`);
-    lastEnd=end; lastDest=t.dest; lastLabel=`${t.time} ${t.origin} → ${t.dest}`;
+
+    if(t===newTrip)
+      details.push(`Disponible después del viaje: ${timeStr(end)}`);
+
+    lastEnd=end;
+    lastDest=t.dest;
   }
-  return {status:'green',label:'SÍ CABE',
-    reason:trips.length?'Existe holgura suficiente para insertar el servicio.':'Unidad sin servicios previos ese día.',
-    details:details,trips:trips};
+
+  return {
+    status:'green',
+    label:'SÍ CABE',
+    reason:trips.length
+      ?'Existe holgura suficiente para insertar el servicio.'
+      :'Unidad sin servicios previos ese día.',
+    details:details,
+    trips:trips
+  };
 }
 
 function unitScheduleText(unit,date){
   const trips=unitTrips(unit,date);
   if(!trips.length)return 'Sin servicios programados';
+
   return trips.map(t=>{
     const end=tripEnd(t);
-    return `${t.time} ${t.origin} → ${t.dest}${end?' · disponible '+timeStr(end):' · ruta sin tiempo'}`;
+    return `${esc(t.time)} ${esc(t.origin)} → ${esc(t.dest)}${end?' · disponible '+timeStr(end):' · ruta sin tiempo'}`;
   }).join('<br>');
 }
 
 function evaluateTrip(){
-  const n={date:document.getElementById('newDate').value,
-    time:document.getElementById('newTime').value,
-    origin:document.getElementById('newOrigin').value,
-    dest:document.getElementById('newDest').value,
-    type:document.getElementById('newType').value};
-  const preferred=document.getElementById('preferredUnit').value;
+  const n={
+    date:newDate.value,
+    time:newTime.value,
+    origin:newOrigin.value,
+    dest:newDest.value,
+    type:newType.value
+  };
+
+  const preferred=preferredUnit.value;
 
   if(!n.date||!n.time||!n.origin||!n.dest){
-    alert('Completa fecha, hora, origen y destino.');return;
+    alert('Completa fecha, hora, origen y destino.');
+    return;
   }
 
-  let results=db.units.map(u=>({u,res:evaluateUnit(u,n)}));
+  let results=db.units.map(u=>({
+    u,
+    res:evaluateUnit(u,n)
+  }));
+
   const rank={green:0,yellow:1,red:2};
   results.sort((a,b)=>rank[a.res.status]-rank[b.res.status]);
 
-  const preferredResult=preferred?results.find(x=>x.u.name===preferred):null;
-  const alternatives=results.filter(x=>x.u.name!==preferred && x.res.status==='green');
+  const preferredResult=preferred
+    ?results.find(x=>x.u.name===preferred)
+    :null;
+
+  const alternatives=results.filter(
+    x=>x.u.name!==preferred && x.res.status==='green'
+  );
 
   let recommendation='';
+
   if(preferredResult && preferredResult.res.status!=='green'){
     if(alternatives.length){
       recommendation=`<div class="recommend">
         <h4>La unidad solicitada no puede tomar este servicio.</h4>
         <div>La Torre recomienda revisar estas alternativas:</div>
-        ${alternatives.slice(0,3).map(x=>`<span class="choice"><b>${esc(x.u.name)}</b>${x.u.operator?' · '+esc(x.u.operator):''}</span>`).join('')}
-        <div style="margin-top:9px;font-size:12px"><b>Siguiente paso:</b> tocar Base/Comercial para confirmar si el cliente acepta el cambio de unidad.</div>
-        <textarea class="copybox" id="changeMessage" readonly>El servicio de ${n.time}, ${n.origin} → ${n.dest}, no cabe en ${preferred}. Torre propone revisar ${alternatives.slice(0,3).map(x=>x.u.name).join(', ')}. Favor de confirmar con el cliente si es posible realizar el cambio de unidad.</textarea>
+        ${alternatives.slice(0,3).map(x=>`
+          <span class="choice"><b>${esc(x.u.name)}</b>${x.u.operator?' · '+esc(x.u.operator):''}</span>
+        `).join('')}
+        <div style="margin-top:9px;font-size:12px">
+          <b>Siguiente paso:</b> tocar Base/Comercial para confirmar si el cliente acepta el cambio de unidad.
+        </div>
+        <textarea class="copybox" id="changeMessage" readonly>El servicio de ${esc(n.time)}, ${esc(n.origin)} → ${esc(n.dest)}, no cabe en ${esc(preferred)}. Torre propone revisar ${alternatives.slice(0,3).map(x=>x.u.name).join(', ')}. Favor de confirmar con el cliente si es posible realizar el cambio de unidad.</textarea>
         <button class="secondary small" style="margin-top:7px" onclick="copyChangeMessage()">Copiar mensaje para Base/Comercial</button>
       </div>`;
-    } else {
-      recommendation=`<div class="result red"><b>No hay una unidad disponible que cumpla con el servicio.</b><br>
-      En este momento la Torre no encuentra una alternativa verde para la fecha y hora indicadas.</div>`;
+    }else{
+      recommendation=`<div class="result red">
+        <b>No hay una unidad disponible que cumpla con el servicio.</b><br>
+        En este momento la Torre no encuentra una alternativa verde para la fecha y hora indicadas.
+      </div>`;
     }
-  } else if(!preferred && alternatives.length){
+  }else if(!preferred && alternatives.length){
     recommendation=`<div class="recommend">
       <h4>Opciones disponibles</h4>
-      ${alternatives.slice(0,4).map(x=>`<span class="choice"><b>${esc(x.u.name)}</b>${x.u.operator?' · '+esc(x.u.operator):''}</span>`).join('')}
-      <div style="margin-top:7px;font-size:12px">Estas unidades pasan la evaluación con la agenda registrada.</div>
+      ${alternatives.slice(0,4).map(x=>`
+        <span class="choice"><b>${esc(x.u.name)}</b>${x.u.operator?' · '+esc(x.u.operator):''}</span>
+      `).join('')}
+      <div style="margin-top:7px;font-size:12px">
+        Estas unidades pasan la evaluación con la agenda registrada.
+      </div>
     </div>`;
   }
 
-  document.getElementById('evaluation').innerHTML=`<div class="result">
+  evaluation.innerHTML=`<div class="result">
     <h3>Evaluación · ${esc(n.time)} · ${esc(n.origin)} → ${esc(n.dest)}</h3>
-    ${preferredResult?`<div style="margin-bottom:10px">Unidad solicitada: <b>${esc(preferredResult.u.name)}</b> · <span class="status ${preferredResult.res.status}">${preferredResult.res.label}</span></div>`:''}
-    <div class="tablewrap"><table><thead><tr>
-      <th>Unidad</th><th>Operador</th><th>Resultado</th><th>Agenda del día</th><th>Motivo</th><th>Detalle</th>
-    </tr></thead><tbody>
-    ${results.map(x=>`<tr>
-      <td><b>${esc(x.u.name)}</b></td>
-      <td>${esc(x.u.operator||'—')}</td>
-      <td><span class="status ${x.res.status}">${x.res.label}</span></td>
-      <td>${unitScheduleText(x.u,n.date)}</td>
-      <td>${esc(x.res.reason)}</td>
-      <td>${x.res.details.map(esc).join('<br>')}</td>
-    </tr>`).join('')}
-    </tbody></table></div>
+    ${preferredResult?`
+      <div style="margin-bottom:10px">
+        Unidad solicitada: <b>${esc(preferredResult.u.name)}</b> ·
+        <span class="status ${preferredResult.res.status}">${preferredResult.res.label}</span>
+      </div>`:''}
+    <div class="tablewrap">
+      <table>
+        <thead><tr>
+          <th>Unidad</th><th>Operador</th><th>Resultado</th>
+          <th>Agenda del día</th><th>Motivo</th><th>Detalle</th>
+        </tr></thead>
+        <tbody>
+        ${results.map(x=>`<tr>
+          <td><b>${esc(x.u.name)}</b></td>
+          <td>${esc(x.u.operator||'—')}</td>
+          <td><span class="status ${x.res.status}">${x.res.label}</span></td>
+          <td>${unitScheduleText(x.u,n.date)}</td>
+          <td>${esc(x.res.reason)}</td>
+          <td>${x.res.details.map(esc).join('<br>')}</td>
+        </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>
   </div>${recommendation}`;
 }
+
 function copyChangeMessage(){
   const box=document.getElementById('changeMessage');
   if(!box)return;
-  navigator.clipboard?.writeText(box.value).then(()=>alert('Mensaje copiado.'));
+
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(box.value)
+      .then(()=>alert('Mensaje copiado.'))
+      .catch(()=>fallbackCopy(box));
+  }else{
+    fallbackCopy(box);
+  }
 }
 
-function clearEvaluation(){document.getElementById('evaluation').innerHTML=''}
+function fallbackCopy(box){
+  box.focus();
+  box.select();
+  try{
+    document.execCommand('copy');
+    alert('Mensaje copiado.');
+  }catch(e){
+    alert('Selecciona y copia el mensaje manualmente.');
+  }
+}
+
+function clearEvaluation(){
+  evaluation.innerHTML='';
+}
 
 function addTrip(){
-  const t={date:tripDate.value,time:tripTime.value,unit:tripUnit.value,origin:tripOrigin.value.trim(),dest:tripDest.value.trim(),type:tripType.value};
-  if(!t.date||!t.time||!t.unit||!t.origin||!t.dest){alert('Completa todos los datos del servicio.');return}
-  db.trips.push(t); save();
-  tripOrigin.value='';tripDest.value='';
+  const t={
+    date:tripDate.value,
+    time:tripTime.value,
+    unit:tripUnit.value,
+    origin:tripOrigin.value.trim(),
+    dest:tripDest.value.trim(),
+    type:tripType.value
+  };
+
+  if(!t.date||!t.time||!t.unit||!t.origin||!t.dest){
+    alert('Completa todos los datos del servicio.');
+    return;
+  }
+
+  db.trips.push(t);
+  save();
+  tripOrigin.value='';
+  tripDest.value='';
 }
-function deleteTrip(i){db.trips.splice(i,1);save()}
+
+function deleteTrip(i){
+  db.trips.splice(i,1);
+  save();
+}
+
 function addRoute(){
-  const r={origin:routeOrigin.value.trim(),dest:routeDest.value.trim(),minutes:Number(routeMin.value),note:routeNote.value.trim()};
-  if(!r.origin||!r.dest||!r.minutes){alert('Completa origen, destino y tiempo.');return}
-  const idx=db.routes.findIndex(x=>normalize(x.origin)===normalize(r.origin)&&normalize(x.dest)===normalize(r.dest));
-  if(idx>=0)db.routes[idx]=r;else db.routes.push(r);
-  save();routeOrigin.value='';routeDest.value='';routeNote.value='';
+  const r={
+    origin:routeOrigin.value.trim(),
+    dest:routeDest.value.trim(),
+    minutes:Number(routeMin.value),
+    note:routeNote.value.trim()
+  };
+
+  if(!r.origin||!r.dest||!r.minutes){
+    alert('Completa origen, destino y tiempo.');
+    return;
+  }
+
+  const idx=db.routes.findIndex(
+    x=>normalize(x.origin)===normalize(r.origin) &&
+       normalize(x.dest)===normalize(r.dest)
+  );
+
+  if(idx>=0)db.routes[idx]=r;
+  else db.routes.push(r);
+
+  save();
+  routeOrigin.value='';
+  routeDest.value='';
+  routeNote.value='';
 }
-function deleteRoute(i){db.routes.splice(i,1);save()}
+
+function deleteRoute(i){
+  db.routes.splice(i,1);
+  save();
+}
+
 function addUnit(){
-  const u={name:unitName.value.trim(),operator:unitOperator.value.trim(),status:unitStatus.value};
-  if(!u.name){alert('Captura el nombre de la unidad.');return}
-  db.units.push(u);save();unitName.value='';unitOperator.value='';
+  const u={
+    name:unitName.value.trim(),
+    operator:unitOperator.value.trim(),
+    status:unitStatus.value
+  };
+
+  if(!u.name){
+    alert('Captura el nombre de la unidad.');
+    return;
+  }
+
+  db.units.push(u);
+  save();
+  unitName.value='';
+  unitOperator.value='';
 }
-function deleteUnit(i){if(db.units.length<=1){alert('Debe existir al menos una unidad.');return}db.units.splice(i,1);save()}
+
+function deleteUnit(i){
+  if(db.units.length<=1){
+    alert('Debe existir al menos una unidad.');
+    return;
+  }
+
+  db.units.splice(i,1);
+  save();
+}
 
 function loadConfigForm(){
   const c=db.config;
-  ['lightLoad','lightUnload','normalLoad','normalUnload','heavyLoad','heavyUnload','safety','eveStart','eveStrong','eveExtra','eveStrongExtra','yellowMargin'].forEach(k=>document.getElementById(k).value=c[k]);
+
+  [
+    'lightLoad','lightUnload','normalLoad','normalUnload',
+    'heavyLoad','heavyUnload','safety','eveStart','eveStrong',
+    'eveExtra','eveStrongExtra','yellowMargin'
+  ].forEach(k=>{
+    const el=document.getElementById(k);
+    if(el)el.value=c[k];
+  });
 }
+
 function saveConfig(){
   const c=db.config;
-  ['lightLoad','lightUnload','normalLoad','normalUnload','heavyLoad','heavyUnload','safety','eveExtra','eveStrongExtra','yellowMargin'].forEach(k=>c[k]=Number(document.getElementById(k).value));
-  c.eveStart=document.getElementById('eveStart').value;c.eveStrong=document.getElementById('eveStrong').value;
-  save();alert('Configuración guardada.');
+
+  [
+    'lightLoad','lightUnload','normalLoad','normalUnload',
+    'heavyLoad','heavyUnload','safety',
+    'eveExtra','eveStrongExtra','yellowMargin'
+  ].forEach(k=>{
+    c[k]=Number(document.getElementById(k).value);
+  });
+
+  c.eveStart=document.getElementById('eveStart').value;
+  c.eveStrong=document.getElementById('eveStrong').value;
+
+  save();
+  alert('Configuración guardada.');
 }
-function resetConfig(){db.config=structuredClone(defaults.config);save();loadConfigForm();alert('Valores iniciales restaurados.')}
+
+function resetConfig(){
+  db.config=structuredClone(defaults.config);
+  save();
+  loadConfigForm();
+  alert('Valores iniciales restaurados.');
+}
+
 function resetAllData(){
-  if(!confirm('Esto borrará unidades, rutas y agenda guardadas en este navegador. ¿Continuar?'))return;
-  db=structuredClone(defaults); save(); alert('Datos de prueba borrados. Las cuatro unidades iniciales permanecen disponibles.');
+  if(!confirm('Esto borrará unidades, rutas y agenda guardadas en este navegador. ¿Continuar?'))
+    return;
+
+  db=structuredClone(defaults);
+  save();
+  alert('Datos de prueba borrados. Las cuatro unidades iniciales permanecen disponibles.');
 }
 
 function renderAll(){
-  document.getElementById('kpiUnits').textContent=db.units.length;
-  document.getElementById('kpiTrips').textContent=db.trips.length;
-  document.getElementById('kpiRoutes').textContent=db.routes.length;
-  document.getElementById('kpiTraffic').textContent=`+${db.config.eveStrongExtra} min`;
+  const kpiUnits=document.getElementById('kpiUnits');
+  const kpiTrips=document.getElementById('kpiTrips');
+  const kpiRoutes=document.getElementById('kpiRoutes');
+  const kpiTraffic=document.getElementById('kpiTraffic');
+
+  if(kpiUnits)kpiUnits.textContent=db.units.length;
+  if(kpiTrips)kpiTrips.textContent=db.trips.length;
+  if(kpiRoutes)kpiRoutes.textContent=db.routes.length;
+  if(kpiTraffic)kpiTraffic.textContent=`+${db.config.eveStrongExtra} min`;
+
   const hu=document.getElementById('homeUnits');
   const ha=document.getElementById('homeAvailable');
   const ht=document.getElementById('homeTrips');
   const hr=document.getElementById('homeRoutes');
-  if(hu) hu.textContent=db.units.length;
-  if(ha) ha.textContent=db.units.filter(u=>u.status==='Disponible').length;
-  if(ht) ht.textContent=db.trips.length;
-  if(hr) hr.textContent=db.routes.length;
+
+  if(hu)hu.textContent=db.units.length;
+  if(ha)ha.textContent=db.units.filter(u=>u.status==='Disponible').length;
+  if(ht)ht.textContent=db.trips.length;
+  if(hr)hr.textContent=db.routes.length;
+
   const hb=document.getElementById('homeUnitsBody');
+
   if(hb){
     const d=today();
+
     hb.innerHTML=db.units.map(u=>{
       const ts=unitTrips(u.name,d);
       const ends=ts.map(tripEnd).filter(Boolean).sort((a,b)=>a-b);
       const next=ends.length?timeStr(ends[ends.length-1]):'Disponible';
-      const cls=u.status==='Disponible'?'green':u.status==='Activa'?'yellow':'red';
-      return `<tr><td><b>${esc(u.name)}</b></td><td>${esc(u.operator||'Sin operador')}</td><td><span class="status ${cls}">${esc(u.status)}</span></td><td>${ts.length}</td><td>${next}</td></tr>`;
+      const cls=u.status==='Disponible'
+        ?'green'
+        :u.status==='Activa'
+          ?'yellow'
+          :'red';
+
+      return `<tr>
+        <td><b>${esc(u.name)}</b></td>
+        <td>${esc(u.operator||'Sin operador')}</td>
+        <td><span class="status ${cls}">${esc(u.status)}</span></td>
+        <td>${ts.length}</td>
+        <td>${next}</td>
+      </tr>`;
     }).join('');
   }
-  tripUnit.innerHTML=db.units.map(u=>`<option>${esc(u.name)}</option>`).join('');
-  const currentPreferred=document.getElementById('preferredUnit')?.value||'';
-  const pref=document.getElementById('preferredUnit');
-  if(pref){
-    pref.innerHTML='<option value="">Todas las unidades</option>'+db.units.map(u=>`<option value="${esc(u.name)}">${esc(u.name)}${u.operator?' · '+esc(u.operator):''}</option>`).join('');
-    pref.value=currentPreferred;
-  }
-  agendaBody.innerHTML=db.trips.slice().sort((a,b)=>(a.date+a.time).localeCompare(b.date+b.time)).map((t,i)=>{
-    const realIndex=db.trips.indexOf(t), end=tripEnd(t);
-    return `<tr><td>${esc(t.date)}</td><td>${esc(t.time)}</td><td>${esc(t.unit)}</td><td>${esc(t.origin)}</td><td>${esc(t.dest)}</td><td>${esc(t.type)}</td><td>${end?timeStr(end):'<span class="status yellow">Sin ruta</span>'}</td><td><button class="danger small" onclick="deleteTrip(${realIndex})">Eliminar</button></td></tr>`
-  }).join('');
-  routesBody.innerHTML=db.routes.map((r,i)=>`<tr><td>${esc(r.origin)}</td><td>${esc(r.dest)}</td><td>${r.minutes} min</td><td>${esc(r.note||'—')}</td><td><button class="danger small" onclick="deleteRoute(${i})">Eliminar</button></td></tr>`).join('');
-  unitsBody.innerHTML=db.units.map((u,i)=>`<tr><td>${esc(u.name)}</td><td>${esc(u.operator||'—')}</td><td>${esc(u.status)}</td><td><button class="danger small" onclick="deleteUnit(${i})">Eliminar</button></td></tr>`).join('');
+
+  tripUnit.innerHTML=db.units
+    .map(u=>`<option>${esc(u.name)}</option>`)
+    .join('');
+
+  const currentPreferred=preferredUnit.value||'';
+
+  preferredUnit.innerHTML=
+    '<option value="">Todas las unidades</option>'+
+    db.units.map(u=>
+      `<option value="${esc(u.name)}">${esc(u.name)}${u.operator?' · '+esc(u.operator):''}</option>`
+    ).join('');
+
+  preferredUnit.value=currentPreferred;
+
+  agendaBody.innerHTML=db.trips
+    .slice()
+    .sort((a,b)=>(a.date+a.time).localeCompare(b.date+b.time))
+    .map(t=>{
+      const realIndex=db.trips.indexOf(t);
+      const end=tripEnd(t);
+
+      return `<tr>
+        <td>${esc(t.date)}</td>
+        <td>${esc(t.time)}</td>
+        <td>${esc(t.unit)}</td>
+        <td>${esc(t.origin)}</td>
+        <td>${esc(t.dest)}</td>
+        <td>${esc(t.type)}</td>
+        <td>${end?timeStr(end):'<span class="status yellow">Sin ruta</span>'}</td>
+        <td><button class="danger small" onclick="deleteTrip(${realIndex})">Eliminar</button></td>
+      </tr>`;
+    }).join('');
+
+  routesBody.innerHTML=db.routes.map((r,i)=>
+    `<tr>
+      <td>${esc(r.origin)}</td>
+      <td>${esc(r.dest)}</td>
+      <td>${r.minutes} min</td>
+      <td>${esc(r.note||'—')}</td>
+      <td><button class="danger small" onclick="deleteRoute(${i})">Eliminar</button></td>
+    </tr>`
+  ).join('');
+
+  unitsBody.innerHTML=db.units.map((u,i)=>
+    `<tr>
+      <td>${esc(u.name)}</td>
+      <td>${esc(u.operator||'—')}</td>
+      <td>${esc(u.status)}</td>
+      <td><button class="danger small" onclick="deleteUnit(${i})">Eliminar</button></td>
+    </tr>`
+  ).join('');
+
   loadConfigForm();
 }
+
 renderAll();
 showTab('inicio',document.querySelector('.tab'));
 </script>
