@@ -113,8 +113,9 @@ function evalSeq(arr,n,labelx){
   return{st:'green',txt:'SÍ CABE',why:`${labelx}: sin conflicto.`,det:''}
 }
 function evalPair(u,o,n){
-  et a=evalSeq(tripsFor(u.name,n.date),n,'Unidad '+u.name);
-return{st:a.st,txt:a.st==='green'?'SÍ CABE':'NO CABE',a,b:{st:'green',txt:'SÍ CABE'}}
+  let a=evalSeq(tripsFor(u.name,n.date),n,'Unidad '+u.name),b=evalSeq(opsFor(o.name,n.date),n,'Operador '+o.name);
+  let st=a.st==='red'||b.st==='red'?'red':'green';
+  return{st,txt:st==='green'?'SÍ CABE':'NO CABE',a,b}
 }
 function evaluar(){
   let n={folio:folio($('folio').value),date:$('fecha').value,time:$('hora').value,ocp:$('ocp').value.trim(),dcp:$('dcp').value.trim(),travel:+$('viaje').value,type:$('tipo').value};
