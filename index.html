@@ -117,6 +117,7 @@ function evalPair(u,o,n){
   let st=a.st==='red'||b.st==='red'?'red':'green';
   return{st,txt:st==='green'?'SÍ CABE':'NO CABE',a,b}
 }
+
 function evaluar(){
   let n={folio:folio($('folio').value),date:$('fecha').value,time:$('hora').value,ocp:$('ocp').value.trim(),dcp:$('dcp').value.trim(),travel:+$('viaje').value,type:$('tipo').value};
   if(!n.folio||!n.date||!/^\d{5}$/.test(n.ocp)||!/^\d{5}$/.test(n.dcp)||!n.travel){alert('Completa folio VAN, fecha, ventana, CP de carga, CP de entrega y trayecto.');return}
