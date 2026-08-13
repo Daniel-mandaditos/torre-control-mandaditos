@@ -150,7 +150,7 @@ function render(){
 }
 function delTrip(i){if(confirm('¿Eliminar este servicio?')){db.trips.splice(i,1);save();calendar()}}
 function calendar(){
-  let date=today(),units=db.units,html='<div class="cal"><div class="ch">Ventana</div>';
+ let date=$('caldate').value||today(),units=db.units,html='<div class="cal"><div class="ch">Ventana</div>';
   units.forEach(u=>html+=`<div class="ch">${esc(u.name)}</div>`);
   for(let h=6;h<=20;h++){let s=String(h).padStart(2,'0')+':00',w=win(s);html+=`<div class="ct">${s}–${label(w.e)}<br><span style="font-size:10px;color:#8b6200">Corte ${label(w.c)}</span></div>`;units.forEach(u=>{let ts=db.trips.filter(t=>t.date===date&&t.unit===u.name&&t.time===s);html+='<div class="cc">';if(!ts.length)html+='<div class="empty">Disponible</div>';ts.forEach(t=>html+=`<div class="trip" title="Folio ${esc(t.folio)} · Operador ${esc(t.operator)} · Fin ${endTime(t)}"><b>${esc(t.folio)}</b><br>${esc(t.operator)}<br>${s}–${label(w.e)}</div>`);html+='</div>'})}
   html+='</div>';$('cal').innerHTML=html;render()
