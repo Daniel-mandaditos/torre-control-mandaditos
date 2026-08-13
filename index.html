@@ -95,7 +95,7 @@ function dur(type){let c=db.config;return type==='Ligera'?+c.ll+ +c.lu+ +c.buf:t
 function extra(t){let c=db.config,m=mins(t);return m>=mins(c.efs)?+c.efe:m>=mins(c.es)?+c.ee:0}
 function end(t){let d=new Date(t.date+'T'+t.time+':00');d.setMinutes(d.getMinutes()+ +t.travel+dur(t.type)+extra(t.time));return d}
 function endTime(t){return end(t).toTimeString().slice(0,5)}
-function win(t){let s=mins(t);return{s,e:s+60,c:s+60-+db.config.cut}}
+function win(t){let s=mins(t);return{s,e:s+60,c:s+ +db.config.cut}}
 function folio(v){v=String(v||'').trim().toUpperCase().replace(/\s+/g,' ');if(/^\d+$/.test(v))return'VAN '+v;if(/^VAN\s*\d+$/.test(v))return'VAN '+v.replace(/^VAN\s*/,'');return v}
 function tripsFor(unit,date){return db.trips.filter(t=>t.unit===unit&&t.date===date).sort((a,b)=>mins(a.time)-mins(b.time))}
 function opsFor(op,date){return db.trips.filter(t=>t.operator===op&&t.date===date).sort((a,b)=>mins(a.time)-mins(b.time))}
