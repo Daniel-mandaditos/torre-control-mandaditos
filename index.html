@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#0b3558">
-<title>Torre de Control — Mandaditos V4.4</title>
+<title>Torre de Control — Mandaditos V4.4.1</title>
 <style>
 :root{--n:#0b3558;--b:#1d70b7;--g:#2e9b59;--y:#d99a00;--r:#c74444;--bg:#f4f7fa;--c:#fff;--l:#d8e0e8;--t:#173042;--m:#687887}
 *{box-sizing:border-box}body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:var(--t)}
@@ -27,7 +27,7 @@ input,select{width:100%;padding:9px;border:1px solid #cbd5df;border-radius:7px;b
 </style>
 </head>
 <body>
-<header><div><h1>TORRE DE CONTROL — MANDADITOS</h1><p>V4.4 · Capacidad por ventanas · Código postal · Tiempo manual</p></div><div class="badge">VERSIÓN DE TRABAJO</div></header>
+<header><div><h1>TORRE DE CONTROL — MANDADITOS</h1><p>V4.4.1 · Capacidad por ventanas · Código postal · Tiempo manual</p></div><div class="badge">VERSIÓN DE TRABAJO</div></header>
 <main>
 <div class="notice"><b>Nueva lógica:</b> Mandaditos Van conserva los datos completos. Torre trabaja con <b>folio VAN, CP de carga, CP de entrega, ventana, tipo de carga y trayecto estimado</b>. El calendario es de control, no una segunda captura.</div>
 <div class="tabs">
@@ -45,7 +45,7 @@ input,select{width:100%;padding:9px;border:1px solid #cbd5df;border-radius:7px;b
 <div class="card"><h2>¿Cabe este viaje?</h2>
 <div class="notice"><b>Regla de corte:</b> una ventana de 7:00–8:00 puede aceptarse hasta las <b>7:20</b>. Desde 7:21 pasa automáticamente a 8:00–9:00. Al corte hay hasta 40 minutos disponibles para reposicionamiento; Torre conserva criterio operativo si el punto está demasiado lejos.</div>
 <div class="form">
-<div><label>Folio Mandaditos Van</label><input id="folio" placeholder="VAN 5468"></div>
+<div><label>Número de VAN</label><div style="display:flex;align-items:center;gap:0"><span style="padding:9px 10px;background:#edf3f8;border:1px solid #cbd5df;border-right:0;border-radius:7px 0 0 7px;font-weight:bold;color:var(--n)">VAN</span><input id="folio" type="number" min="1" step="1" inputmode="numeric" placeholder="5468" style="border-radius:0 7px 7px 0"></div></div>
 <div><label>Fecha</label><input id="fecha" type="date"></div>
 <div><label>Ventana</label><select id="hora"></select></div>
 <div><label>Tipo de carga</label><select id="tipo"><option>Ligera</option><option selected>Normal</option><option>Pesada</option></select></div>
@@ -75,7 +75,7 @@ input,select{width:100%;padding:9px;border:1px solid #cbd5df;border-radius:7px;b
 <div><label>Inicio ajuste vespertino</label><input id="es" type="time"></div><div><label>Inicio ajuste fuerte</label><input id="efs" type="time"></div><div><label>Extra vespertino</label><input id="ee" type="number"></div><div><label>Extra fuerte</label><input id="efe" type="number"></div>
 </div><div class="actions"><button class="primary" onclick="saveCfg()">Guardar</button><button class="secondary" onclick="resetCfg()">Restaurar</button><button class="danger" onclick="resetData()">Borrar datos</button></div></div>
 </section>
-<div class="footer">Torre de Control Mandaditos · V4.4 · Datos guardados localmente en este navegador</div>
+<div class="footer">Torre de Control Mandaditos · V4.4.1 · Datos guardados localmente en este navegador</div>
 </main>
 
 <script>
@@ -96,7 +96,7 @@ function extra(t){let c=db.config,m=mins(t);return m>=mins(c.efs)?+c.efe:m>=mins
 function end(t){let d=new Date(t.date+'T'+t.time+':00');d.setMinutes(d.getMinutes()+ +t.travel+dur(t.type)+extra(t.time));return d}
 function endTime(t){return end(t).toTimeString().slice(0,5)}
 function win(t){let s=mins(t);return{s,e:s+60,c:s+ +db.config.cut}}
-function folio(v){v=String(v||'').trim().toUpperCase().replace(/\s+/g,' ');if(/^\d+$/.test(v))return'VAN '+v;if(/^VAN\s*\d+$/.test(v))return'VAN '+v.replace(/^VAN\s*/,'');return v}
+function folio(v){let n=String(v||'').trim();return /^\d+$/.test(n)?'VAN '+n:''}
 function tripsFor(unit,date){return db.trips.filter(t=>t.unit===unit&&t.date===date).sort((a,b)=>mins(a.time)-mins(b.time))}
 function opsFor(op,date){return db.trips.filter(t=>t.operator===op&&t.date===date).sort((a,b)=>mins(a.time)-mins(b.time))}
 function evalSeq(arr,n,labelx){
@@ -119,13 +119,13 @@ function evalPair(u,o,n){
 }
 function evaluar(){
   let n={folio:folio($('folio').value),date:$('fecha').value,time:$('hora').value,ocp:$('ocp').value.trim(),dcp:$('dcp').value.trim(),travel:+$('viaje').value,type:$('tipo').value};
-  if(!/^VAN\s+\d+$/i.test(n.folio)||!n.date||!/^\d{5}$/.test(n.ocp)||!/^\d{5}$/.test(n.dcp)||!n.travel){alert('Completa folio VAN, fecha, ventana, CP de carga, CP de entrega y trayecto.');return}
+  if(!n.folio||!n.date||!/^\d{5}$/.test(n.ocp)||!/^\d{5}$/.test(n.dcp)||!n.travel){alert('Completa folio VAN, fecha, ventana, CP de carga, CP de entrega y trayecto.');return}
   if(db.trips.some(t=>t.folio&&t.folio.toUpperCase()===n.folio.toUpperCase())){alert('Ese folio ya está en la agenda.');return}
   let us=db.units.filter(u=>u.status!=='Fuera de servicio'&&(!$('pref').value||u.name===$('pref').value)),os=db.ops.filter(o=>o.status!=='Fuera de servicio');
   if(!os.length){$('resultado').innerHTML='<div class="result"><b>No hay operadores registrados.</b> Ve a Unidades y agrega operadores.</div>';return}
   let groups=us.map(u=>{let arr=os.map(o=>({u,o,r:evalPair(u,o,n)}));arr.sort((a,b)=>(a.r.st==='green'?0:1)-(b.r.st==='green'?0:1));return {u,arr}}); 
   let w=win(n.time),html=`<div class="result"><h3>${esc(n.folio)} · ${n.time}–${label(w.e)}</h3><ul><li>CP carga: <b>${n.ocp}</b> · CP entrega: <b>${n.dcp}</b></li><li>Tipo: <b>${n.type}</b></li><li>Trayecto: <b>${n.travel} min</b></li><li>Carga + descarga: <b>${dur(n.type)-db.config.buf} min</b></li><li>Colchón: <b>${db.config.buf} min</b></li><li>Margen vespertino: <b>+${extra(n.time)} min</b></li><li>Fin estimado: <b>${endTime(n)}</b></li><li>Corte de ventana: <b>${label(w.c)}</b></li></ul></div><div class="card"><h2>Opciones por unidad</h2><div class="unit-options">`;
-  groups.forEach(g=>{html+=`<div class="unit"><h3>${esc(g.u.name)}</h3>`;g.arr.slice(0,6).forEach(x=>{html+=`<div class="option ${x.r.st==='green'?'ok':'no'}"><span class="status ${x.r.st}">${x.r.txt}</span> <b>${esc(x.o.name)}</b><br><span class="muted">${esc(x.r.a.why)} ${esc(x.r.b.why)}</span>${x.r.st==='green'?`<button onclick='assign(${JSON.stringify({...n,unit:x.u.name,operator:x.o.name})})'>ASIGNAR</button>`:''}</div>`});html+='</div>'}).join('');html+='</div></div>';$('resultado').innerHTML=html
+  groups.forEach(g=>{html+=`<div class="unit"><h3>${esc(g.u.name)}</h3>`;g.arr.slice(0,6).forEach(x=>{html+=`<div class="option ${x.r.st==='green'?'ok':'no'}"><span class="status ${x.r.st}">${x.r.txt}</span> <b>${esc(x.o.name)}</b><br><span class="muted">${esc(x.r.a.why)} ${esc(x.r.b.why)}</span>${x.r.st==='green'?`<button onclick='assign(${JSON.stringify({...n,unit:x.u.name,operator:x.o.name})})'>ASIGNAR</button>`:''}</div>`});html+='</div>'});html+='</div></div>';$('resultado').innerHTML=html
 }
 function assign(t){if(db.trips.some(x=>x.folio===t.folio)){alert('Ese folio ya fue asignado.');return}db.trips.push(t);save();$('caldate').value=t.date;tab('agenda',document.querySelectorAll('.tab')[2]);calendar();alert(`${t.folio} asignado a ${t.unit}, ${t.time}–${label(win(t.time).e)}.`)}
 function limpiar(){$('resultado').innerHTML=''}
