@@ -61,7 +61,7 @@ input,select{width:100%;padding:9px;border:1px solid #cbd5df;border-radius:7px;b
 <section id="agenda" class="panel">
 <div class="card"><h2>Calendario de ocupación</h2><div class="form"><div><label>Fecha</label><input id="caldate" type="date" onchange="calendar()"></div></div>
 <p class="muted">Unidades en columnas. Ventanas de una hora hacia abajo. El folio VAN identifica el viaje. Los minutos internos no cambian la ventana comercial.</p><div class="calendar" id="cal"></div></div>
-<div class="card"><h2>Servicios asignados</h2><div class="tablewrap"><table><thead><tr><th>Folio</th><th>Ventana</th><th>Unidad</th><th>Operador</th><th>CP carga</th><th>CP entrega</th><th>Tipo</th><th>Trayecto</th><th>Fin estimado</th><th></th></tr></thead><tbody id="agenda"></tbody></table></div></div>
+<div class="card"><h2>Servicios asignados</h2><div class="tablewrap"><table><thead><tr><th>Folio</th><th>Ventana</th><th>Unidad</th><th>Operador</th><th>CP carga</th><th>CP entrega</th><th>Tipo</th><th>Trayecto</th><th>Fin estimado</th><th></th></tr></thead><tbody id="agendaBody"></tbody></table></div></div>
 </section>
 
 <section id="unidades" class="panel">
@@ -144,7 +144,7 @@ function render(){
   $('pref').innerHTML='<option value="">Todas las unidades</option>'+db.units.filter(u=>u.status!=='Fuera de servicio').map(u=>`<option>${esc(u.name)}</option>`).join('');
   $('units').innerHTML=db.units.map((u,i)=>`<tr><td>${esc(u.name)}</td><td>${esc(u.status)}</td><td><button class="danger small" onclick="delUnit(${i})">Eliminar</button></td></tr>`).join('');
   $('ops').innerHTML=db.ops.map((o,i)=>`<tr><td>${esc(o.name)}</td><td>${esc(o.status)}</td><td><button class="danger small" onclick="delOp(${i})">Eliminar</button></td></tr>`).join('');
-  let date=$('caldate').value||today();$('agenda').innerHTML=db.trips.filter(t=>t.date===date).sort((a,b)=>mins(a.time)-mins(b.time)).map(t=>{let i=db.trips.indexOf(t),w=win(t.time);return`<tr><td><b>${esc(t.folio)}</b></td><td>${t.time}–${label(w.e)}</td><td>${esc(t.unit)}</td><td>${esc(t.operator)}</td><td>${esc(t.ocp)}</td><td>${esc(t.dcp)}</td><td>${esc(t.type)}</td><td>${t.travel} min</td><td>${endTime(t)}</td><td><button class="danger small" onclick="delTrip(${i})">Eliminar</button></td></tr>`}).join('');
+  let date=$('caldate').value||today();$('agendaBody').innerHTML=db.trips.filter(t=>t.date===date).sort((a,b)=>mins(a.time)-mins(b.time)).map(t=>{let i=db.trips.indexOf(t),w=win(t.time);return`<tr><td><b>${esc(t.folio)}</b></td><td>${t.time}–${label(w.e)}</td><td>${esc(t.unit)}</td><td>${esc(t.operator)}</td><td>${esc(t.ocp)}</td><td>${esc(t.dcp)}</td><td>${esc(t.type)}</td><td>${t.travel} min</td><td>${endTime(t)}</td><td><button class="danger small" onclick="delTrip(${i})">Eliminar</button></td></tr>`}).join('');
   cfgForm();
 }
 function delTrip(i){if(confirm('¿Eliminar este servicio?')){db.trips.splice(i,1);save();calendar()}}
