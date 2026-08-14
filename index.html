@@ -233,7 +233,7 @@ function setup(){
   let t=today();$('fecha').value=t;$('caldate').value=t;
   $('hora').innerHTML='';for(let h=6;h<=21;h++){let s=String(h).padStart(2,'0')+':00';$('hora').innerHTML+=`<option value="${s}">${s}–${String(h+1).padStart(2,'0')}:00</option>`}$('hora').value='10:00';render()
 }
-setup();
+window.addEventListener('DOMContentLoaded',setup);
 cargarOperadores();
 </script>
 </body></html>
