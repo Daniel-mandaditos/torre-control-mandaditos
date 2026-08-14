@@ -90,6 +90,19 @@ let db=load();
 const $=id=>document.getElementById(id);
 function cp(s){let m=String(s||'').match(/\b\d{5}\b/g);return m?m[m.length-1]:''}
 function load(){try{let x=JSON.parse(localStorage.getItem(KEY));if(x)return {...DEF,...x,config:{...DEF.config,...x.config}};let o=JSON.parse(localStorage.getItem(OLD));if(o)return {config:{...DEF.config,...o.config,buf:15,cut:20},units:o.units||DEF.units,ops:o.operators||[],trips:(o.trips||[]).map(t=>({...t,folio:t.folio||'',ocp:cp(t.origin),dcp:cp(t.dest)}))}}catch(e){}return JSON.parse(JSON.stringify(DEF))}
+async function cargarOperadores(){
+  const {data,error}=await supabaseClient
+    .from('operadores')
+    .select('nombre,estado');
+
+  if(error){
+    console.error('Error cargando operadores:',error);
+    return;
+  }
+
+  db.ops=data.map(o=>({name:o.nombre,status:o.estado}));
+  render();
+}  
 function save(){localStorage.setItem(KEY,JSON.stringify(db));render()}
 function esc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
 function mins(t){let[a,b]=t.split(':').map(Number);return a*60+b}
@@ -221,5 +234,6 @@ function setup(){
   $('hora').innerHTML='';for(let h=6;h<=21;h++){let s=String(h).padStart(2,'0')+':00';$('hora').innerHTML+=`<option value="${s}">${s}–${String(h+1).padStart(2,'0')}:00</option>`}$('hora').value='10:00';render()
 }
 setup();
+cargarOperadores();
 </script>
 </body></html>
