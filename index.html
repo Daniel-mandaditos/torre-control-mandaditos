@@ -145,7 +145,7 @@ async function assign(t){
     .maybeSingle();
 
   if(errUnidad||!unidad){
-    alert('No se encontró la unidad en Supabase: '+t.unit);
+    alert('SUPABASE UNIDADES: '+(errUnidad ? errUnidad.message : 'La consulta funcionó, pero no encontró "'+t.unit+'"'));
     return;
   }
 
