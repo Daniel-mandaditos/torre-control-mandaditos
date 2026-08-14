@@ -81,161 +81,1562 @@ input,select{width:100%;padding:9px;border:1px solid #cbd5df;border-radius:7px;b
 
 <script>
 'use strict';
+
 const SUPABASE_URL = 'https://wjivpftfugvyaxzfzthx.supabase.co';
-const SUPABASE_KEY = 'sb_publishable_Ei_9U5-CjfNP-Et8UT2uUA_5T075uDj'; 
-const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);  
-const KEY='mandaditos_torre_v44',OLD='mandaditos_torre_v43_manual';
-const DEF={config:{ll:10,lu:10,nl:20,nu2:20,hl:40,hu:40,buf:15,cut:20,es:'15:00',efs:'16:00',ee:5,efe:10},units:[{name:'Changan',status:'Disponible'},{name:'Tornado',status:'Disponible'},{name:'S10-08 Caja Seca',status:'Disponible'},{name:'S10-12 Redilas',status:'Disponible'}],ops:[],trips:[]};
-let db=load();
-const $=id=>document.getElementById(id);
-function cp(s){let m=String(s||'').match(/\b\d{5}\b/g);return m?m[m.length-1]:''}
-function load(){try{let x=JSON.parse(localStorage.getItem(KEY));if(x)return {...DEF,...x,config:{...DEF.config,...x.config}};let o=JSON.parse(localStorage.getItem(OLD));if(o)return {config:{...DEF.config,...o.config,buf:15,cut:20},units:o.units||DEF.units,ops:o.operators||[],trips:(o.trips||[]).map(t=>({...t,folio:t.folio||'',ocp:cp(t.origin),dcp:cp(t.dest)}))}}catch(e){}return JSON.parse(JSON.stringify(DEF))}
-async function cargarOperadores(){
-  const {data,error}=await supabaseClient
-    .from('operadores')
-    .select('nombre,estado');
+const SUPABASE_KEY = 'sb_publishable_Ei_9U5-CjfNP-Et8UT2uUA_5T075uDj';
+const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-  if(error){
-    console.error('Error cargando operadores:',error);
-    return;
-  }
+const KEY='mandaditos_torre_v44';
 
-  db.ops=data.map(o=>({name:o.nombre,status:o.estado}));
-  render();
-}  
-function save(){localStorage.setItem(KEY,JSON.stringify(db));render()}
-function esc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
-function mins(t){let[a,b]=t.split(':').map(Number);return a*60+b}
-function label(m){return String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0')}
-function today(){return new Date().toISOString().slice(0,10)}
-function dur(type){let c=db.config;return type==='Ligera'?+c.ll+ +c.lu+ +c.buf:type==='Pesada'?+c.hl+ +c.hu+ +c.buf:+c.nl+ +c.nu2+ +c.buf}
-function extra(t){let c=db.config,m=mins(t);return m>=mins(c.efs)?+c.efe:m>=mins(c.es)?+c.ee:0}
-function end(t){let d=new Date(t.date+'T'+t.time+':00');d.setMinutes(d.getMinutes()+ +t.travel+dur(t.type)+extra(t.time));return d}
-function endTime(t){return end(t).toTimeString().slice(0,5)}
-function win(t){let s=mins(t);return{s,e:s+60,c:s+ +db.config.cut}}
-function folio(v){let n=String(v||'').trim();return /^\d+$/.test(n)?'VAN '+n:''}
-function tripsFor(unit,date){return db.trips.filter(t=>t.unit===unit&&t.date===date).sort((a,b)=>mins(a.time)-mins(b.time))}
-function opsFor(op,date){return db.trips.filter(t=>t.operator===op&&t.date===date).sort((a,b)=>mins(a.time)-mins(b.time))}
-function evalSeq(arr,n,labelx){
-  let all=[...arr,n].sort((a,b)=>mins(a.time)-mins(b.time)),last=null;
-  for(let t of all){
-    let w=win(t.time);
-    if(last){
-      let lm=last.getHours()*60+last.getMinutes();
-      if(t===n && lm>w.c)return{st:'red',txt:'NO CABE',why:`${labelx}: pasó el corte ${label(w.c)}.`,det:`Liberación anterior ${last.toTimeString().slice(0,5)} · siguiente ventana ${label(w.s)}–${label(w.e)}`};
-      if(lm>w.c)return{st:'red',txt:'NO CABE',why:`${labelx}: conflicto posterior.`,det:`Liberación ${last.toTimeString().slice(0,5)} · corte ${label(w.c)}`};
+const DEF={
+  config:{
+    ll:10,lu:10,nl:20,nu2:20,
+    hl:40,hu:40,buf:15,cut:20,
+    es:'15:00',efs:'16:00',ee:5,efe:10
+  },
+  units:[],
+  ops:[],
+  trips:[]
+};
+
+function clone(o){
+  return JSON.parse(JSON.stringify(o));
+}
+
+function loadConfig(){
+  try{
+    const x=JSON.parse(localStorage.getItem(KEY));
+    if(x&&x.config){
+      return {...DEF.config,...x.config};
     }
+  }catch(e){}
+  return {...DEF.config};
+}
+
+let db={
+  config:loadConfig(),
+  units:[],
+  ops:[],
+  trips:[]
+};
+
+const $=id=>document.getElementById(id);
+
+function cp(s){
+  let m=String(s||'').match(/\b\d{5}\b/g);
+  return m?m[m.length-1]:'';
+}
+
+function esc(s){
+  return String(s??'').replace(/[&<>"']/g,m=>({
+    '&':'&amp;',
+    '<':'&lt;',
+    '>':'&gt;',
+    '"':'&quot;',
+    "'":'&#39;'
+  }[m]));
+}
+
+function mins(t){
+  let[a,b]=String(t||'00:00').split(':').map(Number);
+  return a*60+b;
+}
+
+function label(m){
+  return String(Math.floor(m/60)).padStart(2,'0')+
+         ':'+
+         String(m%60).padStart(2,'0');
+}
+
+function today(){
+  return new Date().toISOString().slice(0,10);
+}
+
+function dur(type){
+  let c=db.config;
+
+  return type==='Ligera'
+    ? +c.ll + +c.lu + +c.buf
+    : type==='Pesada'
+      ? +c.hl + +c.hu + +c.buf
+      : +c.nl + +c.nu2 + +c.buf;
+}
+
+function extra(t){
+  let c=db.config;
+  let m=mins(t);
+
+  return m>=mins(c.efs)
+    ? +c.efe
+    : m>=mins(c.es)
+      ? +c.ee
+      : 0;
+}
+
+function end(t){
+  let d=new Date(t.date+'T'+t.time+':00');
+
+  d.setMinutes(
+    d.getMinutes()+
+    +t.travel+
+    dur(t.type)+
+    extra(t.time)
+  );
+
+  return d;
+}
+
+function endTime(t){
+  return end(t).toTimeString().slice(0,5);
+}
+
+function win(t){
+  let s=mins(t);
+
+  return {
+    s,
+    e:s+60,
+    c:s+ +db.config.cut
+  };
+}
+
+function folio(v){
+  let n=String(v||'').trim();
+
+  return /^\d+$/.test(n)
+    ? 'VAN '+n
+    : '';
+}
+
+function tripsFor(unit,date){
+  return db.trips
+    .filter(t=>t.unit===unit&&t.date===date)
+    .sort((a,b)=>mins(a.time)-mins(b.time));
+}
+
+function opsFor(op,date){
+  return db.trips
+    .filter(t=>t.operator===op&&t.date===date)
+    .sort((a,b)=>mins(a.time)-mins(b.time));
+}
+
+function evalSeq(arr,n,labelx){
+
+  let all=[...arr,n]
+    .sort((a,b)=>mins(a.time)-mins(b.time));
+
+  let last=null;
+
+  for(let t of all){
+
+    let w=win(t.time);
+
+    if(last){
+
+      let lm=
+        last.getHours()*60+
+        last.getMinutes();
+
+      if(t===n&&lm>w.c){
+
+        return{
+          st:'red',
+          txt:'NO CABE',
+          why:`${labelx}: pasó el corte ${label(w.c)}.`,
+          det:
+            `Liberación anterior ${last.toTimeString().slice(0,5)} · `+
+            `siguiente ventana ${label(w.s)}–${label(w.e)}`
+        };
+      }
+
+      if(lm>w.c){
+
+        return{
+          st:'red',
+          txt:'NO CABE',
+          why:`${labelx}: conflicto posterior.`,
+          det:
+            `Liberación ${last.toTimeString().slice(0,5)} · `+
+            `corte ${label(w.c)}`
+        };
+      }
+    }
+
     last=end(t);
   }
-  return{st:'green',txt:'SÍ CABE',why:`${labelx}: sin conflicto.`,det:''}
+
+  return{
+    st:'green',
+    txt:'SÍ CABE',
+    why:`${labelx}: sin conflicto.`,
+    det:''
+  };
 }
+
 function evalPair(u,o,n){
-  let a=evalSeq(tripsFor(u.name,n.date),n,'Unidad '+u.name),b=evalSeq(opsFor(o.name,n.date),n,'Operador '+o.name);
-  let st=a.st==='red'||b.st==='red'?'red':'green';
-  return{st,txt:st==='green'?'SÍ CABE':'NO CABE',a,b}
+
+  let a=evalSeq(
+    tripsFor(u.name,n.date),
+    n,
+    'Unidad '+u.name
+  );
+
+  let b=evalSeq(
+    opsFor(o.name,n.date),
+    n,
+    'Operador '+o.name
+  );
+
+  let st=
+    a.st==='red'||b.st==='red'
+      ? 'red'
+      : 'green';
+
+  return{
+    st,
+    txt:st==='green'?'SÍ CABE':'NO CABE',
+    a,
+    b
+  };
 }
+
+
+/* =========================================================
+   SINCRONIZACIÓN CON SUPABASE
+   ========================================================= */
+
+async function cargarDatos(){
+
+  const [
+    {data:units,error:unitsError},
+    {data:ops,error:opsError},
+    {data:trips,error:tripsError}
+  ]=await Promise.all([
+
+    supabaseClient
+      .from('unidades')
+      .select('id,nombre,estado')
+      .order('nombre'),
+
+    supabaseClient
+      .from('operadores')
+      .select('id,nombre,estado')
+      .order('nombre'),
+
+    supabaseClient
+      .from('servicios')
+      .select('*')
+  ]);
+
+  if(unitsError||opsError||tripsError){
+
+    console.error(
+      'Error sincronizando Supabase:',
+      {
+        unitsError,
+        opsError,
+        tripsError
+      }
+    );
+
+    return false;
+  }
+
+  db.units=(units||[]).map(u=>({
+    id:u.id,
+    name:u.nombre,
+    status:u.estado
+  }));
+
+  db.ops=(ops||[]).map(o=>({
+    id:o.id,
+    name:o.nombre,
+    status:o.estado
+  }));
+
+  db.trips=(trips||[]).map(t=>({
+
+    id:t.id,
+
+    folio:t.folio||'',
+
+    date:t.fecha,
+
+    time:t.hora,
+
+    ocp:t.cp_carga||'',
+
+    dcp:t.cp_entrega||'',
+
+    travel:Number(t.trayecto_minutos)||0,
+
+    type:t.tipo_carga||'Normal',
+
+    unit:t.unidad_nombre||'',
+
+    operator:t.operador_nombre||'',
+
+    unidad_id:t.unidad_id||null,
+
+    operador_id:t.operador_id||null
+
+  }));
+
+  render();
+
+  return true;
+}
+
+
+/* =========================================================
+   CONFIGURACIÓN LOCAL
+   ========================================================= */
+
+function saveConfig(){
+
+  localStorage.setItem(
+    KEY,
+    JSON.stringify({
+      config:db.config
+    })
+  );
+
+  render();
+}
+
+function cfgForm(){
+
+  Object.keys(db.config).forEach(k=>{
+
+    if($(k)){
+      $(k).value=db.config[k];
+    }
+
+  });
+}
+
+
+/* =========================================================
+   EVALUAR VIAJE
+   ========================================================= */
 
 function evaluar(){
-  let n={folio:folio($('folio').value),date:$('fecha').value,time:$('hora').value,ocp:$('ocp').value.trim(),dcp:$('dcp').value.trim(),travel:+$('viaje').value,type:$('tipo').value};
-  if(!n.folio||!n.date||!/^\d{5}$/.test(n.ocp)||!/^\d{5}$/.test(n.dcp)||!n.travel){alert('Completa folio VAN, fecha, ventana, CP de carga, CP de entrega y trayecto.');return}
-  if(db.trips.some(t=>t.folio&&t.folio.toUpperCase()===n.folio.toUpperCase())){alert('Ese folio ya está en la agenda.');return}
-  let us=db.units.filter(u=>u.status!=='Fuera de servicio'&&(!$('pref').value||u.name===$('pref').value)),os=db.ops.filter(o=>o.status!=='Fuera de servicio');
-  if(!os.length){$('resultado').innerHTML='<div class="result"><b>No hay operadores registrados.</b> Ve a Unidades y agrega operadores.</div>';return}
-  let groups=us.map(u=>{let arr=os.map(o=>({u,o,r:evalPair(u,o,n)}));arr.sort((a,b)=>(a.r.st==='green'?0:1)-(b.r.st==='green'?0:1));return {u,arr}}); 
-  let w=win(n.time),html=`<div class="result"><h3>${esc(n.folio)} · ${n.time}–${label(w.e)}</h3><ul><li>CP carga: <b>${n.ocp}</b> · CP entrega: <b>${n.dcp}</b></li><li>Tipo: <b>${n.type}</b></li><li>Trayecto: <b>${n.travel} min</b></li><li>Carga + descarga: <b>${dur(n.type)-db.config.buf} min</b></li><li>Colchón: <b>${db.config.buf} min</b></li><li>Margen vespertino: <b>+${extra(n.time)} min</b></li><li>Fin estimado: <b>${endTime(n)}</b></li><li>Corte de ventana: <b>${label(w.c)}</b></li></ul></div><div class="card"><h2>Opciones por unidad</h2><div class="unit-options">`;
-  groups.forEach(g=>{html+=`<div class="unit"><h3>${esc(g.u.name)}</h3>`;g.arr.slice(0,6).forEach(x=>{html+=`<div class="option ${x.r.st==='green'?'ok':'no'}"><span class="status ${x.r.st}">${x.r.txt}</span> <b>${esc(x.o.name)}</b><br><span class="muted">${esc(x.r.a.why)} ${esc(x.r.b.why)}</span>${x.r.st==='green'?`<button onclick='assign(${JSON.stringify({...n,unit:x.u.name,operator:x.o.name})})'>ASIGNAR</button>`:''}</div>`});html+='</div>'});html+='</div></div>';$('resultado').innerHTML=html
+
+  let n={
+
+    folio:folio($('folio').value),
+
+    date:$('fecha').value,
+
+    time:$('hora').value,
+
+    ocp:$('ocp').value.trim(),
+
+    dcp:$('dcp').value.trim(),
+
+    travel:+$('viaje').value,
+
+    type:$('tipo').value
+  };
+
+  if(
+    !n.folio||
+    !n.date||
+    !/^\d{5}$/.test(n.ocp)||
+    !/^\d{5}$/.test(n.dcp)||
+    !n.travel
+  ){
+
+    alert(
+      'Completa folio VAN, fecha, ventana, '+
+      'CP de carga, CP de entrega y trayecto.'
+    );
+
+    return;
+  }
+
+  if(
+    db.trips.some(
+      t=>
+        t.folio&&
+        t.folio.toUpperCase()===
+        n.folio.toUpperCase()
+    )
+  ){
+
+    alert('Ese folio ya está en la agenda.');
+
+    return;
+  }
+
+  let us=db.units.filter(u=>
+
+    u.status!=='Fuera de servicio'&&
+
+    (!$('pref').value||
+     u.name===$('pref').value)
+
+  );
+
+  let os=db.ops.filter(
+    o=>o.status!=='Fuera de servicio'
+  );
+
+  if(!us.length){
+
+    $('resultado').innerHTML=
+      '<div class="result">'+
+      '<b>No hay unidades disponibles.</b> '+
+      'Ve a Unidades y revisa su estado.'+
+      '</div>';
+
+    return;
+  }
+
+  if(!os.length){
+
+    $('resultado').innerHTML=
+      '<div class="result">'+
+      '<b>No hay operadores disponibles.</b> '+
+      'Ve a Unidades y revisa su estado.'+
+      '</div>';
+
+    return;
+  }
+
+  let groups=us.map(u=>{
+
+    let arr=os.map(o=>({
+
+      u,
+      o,
+      r:evalPair(u,o,n)
+
+    }));
+
+    arr.sort(
+      (a,b)=>
+        (a.r.st==='green'?0:1)-
+        (b.r.st==='green'?0:1)
+    );
+
+    return{
+      u,
+      arr
+    };
+  });
+
+  let w=win(n.time);
+
+  let html=`
+
+    <div class="result">
+
+      <h3>
+        ${esc(n.folio)}
+        ·
+        ${n.time}–${label(w.e)}
+      </h3>
+
+      <ul>
+
+        <li>
+          CP carga:
+          <b>${n.ocp}</b>
+          ·
+          CP entrega:
+          <b>${n.dcp}</b>
+        </li>
+
+        <li>
+          Tipo:
+          <b>${n.type}</b>
+        </li>
+
+        <li>
+          Trayecto:
+          <b>${n.travel} min</b>
+        </li>
+
+        <li>
+          Carga + descarga:
+          <b>
+            ${dur(n.type)-db.config.buf} min
+          </b>
+        </li>
+
+        <li>
+          Colchón:
+          <b>${db.config.buf} min</b>
+        </li>
+
+        <li>
+          Margen vespertino:
+          <b>+${extra(n.time)} min</b>
+        </li>
+
+        <li>
+          Fin estimado:
+          <b>${endTime(n)}</b>
+        </li>
+
+        <li>
+          Corte de ventana:
+          <b>${label(w.c)}</b>
+        </li>
+
+      </ul>
+
+    </div>
+
+    <div class="card">
+
+      <h2>Opciones por unidad</h2>
+
+      <div class="unit-options">
+  `;
+
+  groups.forEach(g=>{
+
+    html+=`
+      <div class="unit">
+        <h3>${esc(g.u.name)}</h3>
+    `;
+
+    g.arr.slice(0,6).forEach(x=>{
+
+      const payload=
+        JSON.stringify({
+          ...n,
+          unit:x.u.name,
+          operator:x.o.name
+        }).replace(/'/g,'&#39;');
+
+      html+=`
+
+        <div class="option ${
+          x.r.st==='green'
+            ? 'ok'
+            : 'no'
+        }">
+
+          <span class="status ${x.r.st}">
+            ${x.r.txt}
+          </span>
+
+          <b>${esc(x.o.name)}</b>
+
+          <br>
+
+          <span class="muted">
+            ${esc(x.r.a.why)}
+            ${esc(x.r.b.why)}
+          </span>
+
+          ${
+            x.r.st==='green'
+              ? `<button onclick='assign(${payload})'>
+                   ASIGNAR
+                 </button>`
+              : ''
+          }
+
+        </div>
+
+      `;
+    });
+
+    html+='</div>';
+  });
+
+  html+=`
+
+      </div>
+
+    </div>
+  </div>
+  `;
+
+  $('resultado').innerHTML=html;
 }
+
+
+/* =========================================================
+   ASIGNAR SERVICIO
+   ========================================================= */
+
 async function assign(t){
-  if(db.trips.some(x=>x.folio===t.folio)){
+
+  if(
+    db.trips.some(
+      x=>x.folio===t.folio
+    )
+  ){
+
     alert('Ese folio ya fue asignado.');
+
     return;
   }
 
-  const {data:unidad,error:errUnidad}=await supabaseClient
-  .from('unidades')
-  .select('id,nombre,estado')
-  .eq('nombre',String(t.unit).trim())
-  .limit(1)
-  .maybeSingle();
+  const unidad=
+    db.units.find(
+      u=>u.name===t.unit
+    );
 
-  if(errUnidad||!unidad){
-    alert('SUPABASE UNIDADES: '+(errUnidad ? errUnidad.message : 'La consulta funcionó, pero no encontró "'+t.unit+'"'));
+  if(!unidad){
+
+    alert(
+      'No se encontró la unidad en Supabase: '+
+      t.unit
+    );
+
     return;
   }
 
-  const {data:operador,error:errOperador}=await supabaseClient
-    .from('operadores')
-    .select('id')
-    .eq('nombre',t.operator)
-    .maybeSingle();
+  const operador=
+    db.ops.find(
+      o=>o.name===t.operator
+    );
 
-  if(errOperador||!operador){
-    alert('No se encontró el operador en Supabase: '+t.operator);
+  if(!operador){
+
+    alert(
+      'No se encontró el operador en Supabase: '+
+      t.operator
+    );
+
     return;
   }
 
   const {error}=await supabaseClient
+
     .from('servicios')
+
     .insert({
+
       folio:t.folio,
+
       fecha:t.date,
+
       hora:t.time,
+
       cp_carga:t.ocp,
+
       cp_entrega:t.dcp,
+
       tipo_carga:t.type,
-      trayecto_minutos:Number(t.travel)||0,
+
+      trayecto_minutos:
+        Number(t.travel)||0,
+
       unidad_id:unidad.id,
+
       operador_id:operador.id,
+
       unidad_nombre:t.unit,
+
       operador_nombre:t.operator
+
     });
 
   if(error){
-    alert('No se pudo guardar en Supabase: '+error.message);
+
+    alert(
+      'No se pudo guardar en Supabase: '+
+      error.message
+    );
+
+    console.error(error);
+
     return;
   }
 
-  db.trips.push(t);
-  save();
+  await cargarDatos();
 
-  $('calendate').value=t.date;
-  tab('agenda',document.querySelectorAll('.tab')[2]);
+  $('caldate').value=t.date;
+
+  tab(
+    'agenda',
+    document.querySelectorAll('.tab')[2]
+  );
+
   calendar();
 }
-function limpiar(){$('resultado').innerHTML=''}
-function addUnit(){let n=$('unombre').value.trim();if(!n)return alert('Captura la unidad.');if(db.units.some(x=>x.name.toLowerCase()===n.toLowerCase()))return alert('Esa unidad ya existe.');db.units.push({name:n,status:$('uestado').value});save();$('unombre').value=''}
-function delUnit(i){if(db.trips.some(t=>t.unit===db.units[i].name))return alert('No se puede eliminar una unidad con servicios asignados.');db.units.splice(i,1);save()}
-async function addOp(){let n=$('onombre').value.trim();if(!n)return alert('Captura el operador.');if(db.ops.some(x=>x.name.toLowerCase()===n.toLowerCase()))return alert('Ese operador ya existe.');const {error}=await supabaseClient.from('operadores').insert({nombre:n,estado:'Disponible'});if(error)return alert('SUPABASE OPERADORES: '+error.message);db.ops.push({name:n,status:'Disponible'});save();render()}
-async function delOp(i){if(db.trips.some(t=>t.operator===db.ops[i].name))return alert('No se puede eliminar un operador con servicios asignados.');const nombre=db.ops[i].name;const {data,error}=await supabaseClient.from('operadores').delete().eq('nombre',nombre).select('nombre');if(error)return alert('Error Supabase DELETE: '+error.message);if(!data||data.length===0)return alert('Supabase no eliminó ninguna fila para: '+nombre);db.ops.splice(i,1);save()}
-async function updateOp(i,estado){const nombre=db.ops[i].name;const {error}=await supabaseClient.from('operadores').update({estado:estado}).eq('nombre',nombre);if(error)return alert('No se pudo actualizar en Supabase: '+error.message);db.ops[i].status=estado;save()}  
-function saveCfg(){['ll','lu','nl','nu2','hl','hu','buf','cut','ee','efe'].forEach(k=>db.config[k]=+$(k).value);db.config.es=$('es').value;db.config.efs=$('efs').value;save();alert('Configuración guardada.')}
-function resetCfg(){db.config=JSON.parse(JSON.stringify(DEF.config));save();cfgForm()}
-function resetData(){if(confirm('¿Borrar unidades, operadores y servicios?')){db=JSON.parse(JSON.stringify(DEF));save()}}
-function cfgForm(){Object.keys(db.config).forEach(k=>{if($(k))$(k).value=db.config[k]})}
-function tab(id,b){document.querySelectorAll('.panel').forEach(x=>x.classList.remove('active'));document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));$(id).classList.add('active');if(b)b.classList.add('active');if(id==='agenda')calendar()}
-function render(){
-  $('nu').textContent=db.units.length;$('nd').textContent=db.units.filter(x=>x.status==='Disponible').length;$('nt').textContent=db.trips.length;$('no').textContent=db.ops.length;
-  $('home').innerHTML=db.units.map(u=>{let ts=tripsFor(u.name,today()),e=ts.length?endTime(ts[ts.length-1]):'Disponible';return`<tr><td><b>${esc(u.name)}</b></td><td>${esc(u.status)}</td><td>${ts.length}</td><td>${e}</td></tr>`}).join('');
-  $('pref').innerHTML='<option value="">Todas las unidades</option>'+db.units.filter(u=>u.status!=='Fuera de servicio').map(u=>`<option>${esc(u.name)}</option>`).join('');
-  $('units').innerHTML=db.units.map((u,i)=>`<tr><td>${esc(u.name)}</td><td>${esc(u.status)}</td><td><button class="danger small" onclick="delUnit(${i})">Eliminar</button></td></tr>`).join('');
-$('ops').innerHTML=db.ops.map((o,i)=>`<tr><td>${esc(o.name)}</td><td><select onchange="updateOp(${i},this.value)"><option ${o.status==='Disponible'?'selected':''}>Disponible</option><option ${o.status==='Activo'?'selected':''}>Activo</option><option ${o.status==='Fuera de servicio'?'selected':''}>Fuera de servicio</option></select></td><td><button class="danger small" onclick="delOp(${i})">Eliminar</button></td></tr>`).join('');
-  let date=$('caldate').value||today();$('agendaBody').innerHTML=db.trips.filter(t=>t.date===date).sort((a,b)=>mins(a.time)-mins(b.time)).map(t=>{let i=db.trips.indexOf(t),w=win(t.time);return`<tr><td><b>${esc(t.folio)}</b></td><td>${t.time}–${label(w.e)}</td><td>${esc(t.unit)}</td><td>${esc(t.operator)}</td><td>${esc(t.ocp)}</td><td>${esc(t.dcp)}</td><td>${esc(t.type)}</td><td>${t.travel} min</td><td>${endTime(t)}</td><td><button class="danger small" onclick="delTrip(${i})">Eliminar</button></td></tr>`}).join('');
+
+
+/* =========================================================
+   UNIDADES
+   ========================================================= */
+
+async function addUnit(){
+
+  let n=$('unombre').value.trim();
+
+  let estado=$('uestado').value;
+
+  if(!n){
+    return alert('Captura la unidad.');
+  }
+
+  if(
+    db.units.some(
+      x=>
+        x.name.toLowerCase()===
+        n.toLowerCase()
+    )
+  ){
+
+    return alert(
+      'Esa unidad ya existe.'
+    );
+  }
+
+  const {error}=
+    await supabaseClient
+      .from('unidades')
+      .insert({
+        nombre:n,
+        estado:estado
+      });
+
+  if(error){
+
+    alert(
+      'SUPABASE UNIDADES: '+
+      error.message
+    );
+
+    console.error(error);
+
+    return;
+  }
+
+  $('unombre').value='';
+
+  await cargarDatos();
+}
+
+async function delUnit(i){
+
+  const u=db.units[i];
+
+  if(!u)return;
+
+  if(
+    db.trips.some(
+      t=>t.unit===u.name
+    )
+  ){
+
+    return alert(
+      'No se puede eliminar una unidad '+
+      'con servicios asignados.'
+    );
+  }
+
+  if(
+    !confirm(
+      '¿Eliminar la unidad '+
+      u.name+
+      '?'
+    )
+  ){
+    return;
+  }
+
+  const {error}=
+    await supabaseClient
+      .from('unidades')
+      .delete()
+      .eq('id',u.id);
+
+  if(error){
+
+    alert(
+      'Error Supabase DELETE: '+
+      error.message
+    );
+
+    console.error(error);
+
+    return;
+  }
+
+  await cargarDatos();
+}
+
+async function updateUnit(i,estado){
+
+  const u=db.units[i];
+
+  if(!u)return;
+
+  const {error}=
+    await supabaseClient
+      .from('unidades')
+      .update({
+        estado:estado
+      })
+      .eq('id',u.id);
+
+  if(error){
+
+    alert(
+      'No se pudo actualizar la unidad '+
+      'en Supabase: '+
+      error.message
+    );
+
+    console.error(error);
+
+    return;
+  }
+
+  await cargarDatos();
+}
+
+
+/* =========================================================
+   OPERADORES
+   ========================================================= */
+
+async function addOp(){
+
+  let n=$('onombre').value.trim();
+
+  let estado=$('oestado').value;
+
+  if(!n){
+    return alert(
+      'Captura el operador.'
+    );
+  }
+
+  if(
+    db.ops.some(
+      x=>
+        x.name.toLowerCase()===
+        n.toLowerCase()
+    )
+  ){
+
+    return alert(
+      'Ese operador ya existe.'
+    );
+  }
+
+  const {error}=
+    await supabaseClient
+      .from('operadores')
+      .insert({
+        nombre:n,
+        estado:estado
+      });
+
+  if(error){
+
+    alert(
+      'SUPABASE OPERADORES: '+
+      error.message
+    );
+
+    console.error(error);
+
+    return;
+  }
+
+  $('onombre').value='';
+
+  await cargarDatos();
+}
+
+async function delOp(i){
+
+  const o=db.ops[i];
+
+  if(!o)return;
+
+  if(
+    db.trips.some(
+      t=>t.operator===o.name
+    )
+  ){
+
+    return alert(
+      'No se puede eliminar un operador '+
+      'con servicios asignados.'
+    );
+  }
+
+  if(
+    !confirm(
+      '¿Eliminar el operador '+
+      o.name+
+      '?'
+    )
+  ){
+    return;
+  }
+
+  const {error}=
+    await supabaseClient
+      .from('operadores')
+      .delete()
+      .eq('id',o.id);
+
+  if(error){
+
+    alert(
+      'Error Supabase DELETE: '+
+      error.message
+    );
+
+    console.error(error);
+
+    return;
+  }
+
+  await cargarDatos();
+}
+
+async function updateOp(i,estado){
+
+  const o=db.ops[i];
+
+  if(!o)return;
+
+  const {error}=
+    await supabaseClient
+      .from('operadores')
+      .update({
+        estado:estado
+      })
+      .eq('id',o.id);
+
+  if(error){
+
+    alert(
+      'No se pudo actualizar en Supabase: '+
+      error.message
+    );
+
+    console.error(error);
+
+    return;
+  }
+
+  await cargarDatos();
+}
+
+
+/* =========================================================
+   CONFIGURACIÓN
+   ========================================================= */
+
+function saveCfg(){
+
+  [
+    'll',
+    'lu',
+    'nl',
+    'nu2',
+    'hl',
+    'hu',
+    'buf',
+    'cut',
+    'ee',
+    'efe'
+  ].forEach(
+    k=>db.config[k]=+$(k).value
+  );
+
+  db.config.es=$('es').value;
+
+  db.config.efs=$('efs').value;
+
+  saveConfig();
+
+  alert(
+    'Configuración guardada.'
+  );
+}
+
+function resetCfg(){
+
+  db.config=
+    clone(DEF.config);
+
+  saveConfig();
+
   cfgForm();
 }
-function delTrip(i){if(confirm('¿Eliminar este servicio?')){db.trips.splice(i,1);save();calendar()}}
+
+function resetData(){
+
+  alert(
+    'El borrado global está deshabilitado '+
+    'para proteger los datos compartidos. '+
+    'Los registros se eliminan individualmente.'
+  );
+}
+
+
+/* =========================================================
+   PESTAÑAS
+   ========================================================= */
+
+function tab(id,b){
+
+  document
+    .querySelectorAll('.panel')
+    .forEach(
+      x=>x.classList.remove('active')
+    );
+
+  document
+    .querySelectorAll('.tab')
+    .forEach(
+      x=>x.classList.remove('active')
+    );
+
+  $(id).classList.add('active');
+
+  if(b){
+    b.classList.add('active');
+  }
+
+  if(id==='agenda'){
+    calendar();
+  }
+}
+
+
+/* =========================================================
+   RENDER
+   ========================================================= */
+
+function render(){
+
+  $('nu').textContent=
+    db.units.length;
+
+  $('nd').textContent=
+    db.units.filter(
+      x=>x.status==='Disponible'
+    ).length;
+
+  $('nt').textContent=
+    db.trips.length;
+
+  $('no').textContent=
+    db.ops.length;
+
+
+  $('home').innerHTML=
+    db.units.map(u=>{
+
+      let ts=
+        tripsFor(
+          u.name,
+          today()
+        );
+
+      let e=
+        ts.length
+          ? endTime(ts[ts.length-1])
+          : 'Disponible';
+
+      return `
+        <tr>
+
+          <td>
+            <b>${esc(u.name)}</b>
+          </td>
+
+          <td>
+            ${esc(u.status)}
+          </td>
+
+          <td>
+            ${ts.length}
+          </td>
+
+          <td>
+            ${e}
+          </td>
+
+        </tr>
+      `;
+
+    }).join('');
+
+
+  $('pref').innerHTML=
+    '<option value="">Todas las unidades</option>'+
+    db.units
+
+      .filter(
+        u=>u.status!=='Fuera de servicio'
+      )
+
+      .map(
+        u=>
+          `<option value="${esc(u.name)}">
+            ${esc(u.name)}
+          </option>`
+      )
+
+      .join('');
+
+
+  $('units').innerHTML=
+    db.units.map((u,i)=>`
+
+      <tr>
+
+        <td>
+          ${esc(u.name)}
+        </td>
+
+        <td>
+
+          <select
+            onchange="updateUnit(${i},this.value)"
+          >
+
+            <option
+              ${u.status==='Disponible'
+                ?'selected'
+                :''}
+            >
+              Disponible
+            </option>
+
+            <option
+              ${u.status==='Activa'
+                ?'selected'
+                :''}
+            >
+              Activa
+            </option>
+
+            <option
+              ${u.status==='Fuera de servicio'
+                ?'selected'
+                :''}
+            >
+              Fuera de servicio
+            </option>
+
+          </select>
+
+        </td>
+
+        <td>
+
+          <button
+            class="danger small"
+            onclick="delUnit(${i})"
+          >
+            Eliminar
+          </button>
+
+        </td>
+
+      </tr>
+
+    `).join('');
+
+
+  $('ops').innerHTML=
+    db.ops.map((o,i)=>`
+
+      <tr>
+
+        <td>
+          ${esc(o.name)}
+        </td>
+
+        <td>
+
+          <select
+            onchange="updateOp(${i},this.value)"
+          >
+
+            <option
+              ${o.status==='Disponible'
+                ?'selected'
+                :''}
+            >
+              Disponible
+            </option>
+
+            <option
+              ${o.status==='Activo'
+                ?'selected'
+                :''}
+            >
+              Activo
+            </option>
+
+            <option
+              ${o.status==='Fuera de servicio'
+                ?'selected'
+                :''}
+            >
+              Fuera de servicio
+            </option>
+
+          </select>
+
+        </td>
+
+        <td>
+
+          <button
+            class="danger small"
+            onclick="delOp(${i})"
+          >
+            Eliminar
+          </button>
+
+        </td>
+
+      </tr>
+
+    `).join('');
+
+
+  let date=
+    $('caldate').value||
+    today();
+
+
+  $('agendaBody').innerHTML=
+    db.trips
+
+      .filter(
+        t=>t.date===date
+      )
+
+      .sort(
+        (a,b)=>
+          mins(a.time)-
+          mins(b.time)
+      )
+
+      .map(t=>{
+
+        let i=
+          db.trips.indexOf(t);
+
+        let w=
+          win(t.time);
+
+        return `
+
+          <tr>
+
+            <td>
+              <b>${esc(t.folio)}</b>
+            </td>
+
+            <td>
+              ${t.time}–${label(w.e)}
+            </td>
+
+            <td>
+              ${esc(t.unit)}
+            </td>
+
+            <td>
+              ${esc(t.operator)}
+            </td>
+
+            <td>
+              ${esc(t.ocp)}
+            </td>
+
+            <td>
+              ${esc(t.dcp)}
+            </td>
+
+            <td>
+              ${esc(t.type)}
+            </td>
+
+            <td>
+              ${t.travel} min
+            </td>
+
+            <td>
+              ${endTime(t)}
+            </td>
+
+            <td>
+
+              <button
+                class="danger small"
+                onclick="delTrip(${i})"
+              >
+                Eliminar
+              </button>
+
+            </td>
+
+          </tr>
+
+        `;
+
+      })
+
+      .join('');
+
+
+  cfgForm();
+}
+
+
+/* =========================================================
+   SERVICIOS
+   ========================================================= */
+
+async function delTrip(i){
+
+  const t=db.trips[i];
+
+  if(!t)return;
+
+  if(
+    !confirm(
+      '¿Eliminar este servicio?'
+    )
+  ){
+    return;
+  }
+
+  if(t.id){
+
+    const {error}=
+      await supabaseClient
+        .from('servicios')
+        .delete()
+        .eq('id',t.id);
+
+    if(error){
+
+      alert(
+        'No se pudo eliminar el servicio '+
+        'en Supabase: '+
+        error.message
+      );
+
+      console.error(error);
+
+      return;
+    }
+  }
+
+  await cargarDatos();
+
+  calendar();
+}
+
+
+/* =========================================================
+   CALENDARIO
+   ========================================================= */
+
 function calendar(){
- let date=$('caldate').value||today(),units=db.units,html='<div class="cal"><div class="ch">Ventana</div>';
-  units.forEach(u=>html+=`<div class="ch">${esc(u.name)}</div>`);
-  for(let h=6;h<=20;h++){let s=String(h).padStart(2,'0')+':00',w=win(s);html+=`<div class="ct">${s}–${label(w.e)}<br><span style="font-size:10px;color:#8b6200">Corte ${label(w.c)}</span></div>`;units.forEach(u=>{let ts=db.trips.filter(t=>t.date===date&&t.unit===u.name&&t.time===s);html+='<div class="cc">';if(!ts.length)html+='<div class="empty">Disponible</div>';ts.forEach(t=>html+=`<div class="trip" title="Folio ${esc(t.folio)} · Operador ${esc(t.operator)} · Fin ${endTime(t)}"><b>${esc(t.folio)}</b><br>${esc(t.operator)}<br>${s}–${label(w.e)}</div>`);html+='</div>'})}
-  html+='</div>';$('cal').innerHTML=html;render()
+
+  let date=
+    $('caldate').value||
+    today();
+
+  let units=
+    db.units;
+
+  let html=
+    '<div class="cal">'+
+    '<div class="ch">Ventana</div>';
+
+  units.forEach(
+    u=>
+      html+=
+        `<div class="ch">
+          ${esc(u.name)}
+        </div>`
+  );
+
+  for(let h=6;h<=20;h++){
+
+    let s=
+      String(h).padStart(2,'0')+
+      ':00';
+
+    let w=
+      win(s);
+
+    html+=`
+
+      <div class="ct">
+
+        ${s}–${label(w.e)}
+
+        <br>
+
+        <span
+          style="font-size:10px;color:#8b6200"
+        >
+          Corte ${label(w.c)}
+        </span>
+
+      </div>
+
+    `;
+
+    units.forEach(u=>{
+
+      let ts=
+        db.trips.filter(
+          t=>
+            t.date===date&&
+            t.unit===u.name&&
+            t.time===s
+        );
+
+      html+=
+        '<div class="cc">';
+
+      if(!ts.length){
+
+        html+=
+          '<div class="empty">'+
+          'Disponible'+
+          '</div>';
+
+      }
+
+      ts.forEach(t=>{
+
+        html+=`
+
+          <div
+            class="trip"
+            title="
+              Folio ${esc(t.folio)}
+              · Operador ${esc(t.operator)}
+              · Fin ${endTime(t)}
+            "
+          >
+
+            <b>
+              ${esc(t.folio)}
+            </b>
+
+            <br>
+
+            ${esc(t.operator)}
+
+            <br>
+
+            ${s}–${label(w.e)}
+
+          </div>
+
+        `;
+
+      });
+
+      html+='</div>';
+
+    });
+
+  }
+
+  html+='</div>';
+
+  $('cal').innerHTML=
+    html;
 }
+
+
+/* =========================================================
+   INICIO
+   ========================================================= */
+
 function setup(){
-  let t=today();$('fecha').value=t;$('caldate').value=t;
-  $('hora').innerHTML='';for(let h=6;h<=21;h++){let s=String(h).padStart(2,'0')+':00';$('hora').innerHTML+=`<option value="${s}">${s}–${String(h+1).padStart(2,'0')}:00</option>`}$('hora').value='10:00';render()
+
+  let t=
+    today();
+
+  $('fecha').value=
+    t;
+
+  $('caldate').value=
+    t;
+
+  $('hora').innerHTML='';
+
+  for(let h=6;h<=21;h++){
+
+    let s=
+      String(h).padStart(2,'0')+
+      ':00';
+
+    $('hora').innerHTML+=`
+
+      <option value="${s}">
+        ${s}–${String(h+1).padStart(2,'0')}:00
+      </option>
+
+    `;
+  }
+
+  $('hora').value=
+    '10:00';
+
+  cfgForm();
+
+  render();
 }
-window.addEventListener('DOMContentLoaded',async()=>{
-  setup();
-  await cargarOperadores();
-});
+
+
+/* =========================================================
+   ARRANQUE Y SINCRONIZACIÓN AUTOMÁTICA
+   ========================================================= */
+
+window.addEventListener(
+  'DOMContentLoaded',
+  async()=>{
+
+    setup();
+
+    const ok=
+      await cargarDatos();
+
+    if(!ok){
+
+      console.warn(
+        'No se pudo sincronizar con Supabase al iniciar.'
+      );
+
+    }
+
+    /*
+      Cada 5 segundos vuelve a consultar Supabase.
+      Así las computadoras comparten los mismos datos.
+    */
+
+    setInterval(
+      async()=>{
+        await cargarDatos();
+      },
+      5000
+    );
+
+  }
+);
+
 </script>
 </body></html>
