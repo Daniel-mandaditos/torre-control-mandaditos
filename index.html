@@ -192,7 +192,7 @@ async function assign(t){
 function limpiar(){$('resultado').innerHTML=''}
 function addUnit(){let n=$('unombre').value.trim();if(!n)return alert('Captura la unidad.');if(db.units.some(x=>x.name.toLowerCase()===n.toLowerCase()))return alert('Esa unidad ya existe.');db.units.push({name:n,status:$('uestado').value});save();$('unombre').value=''}
 function delUnit(i){if(db.trips.some(t=>t.unit===db.units[i].name))return alert('No se puede eliminar una unidad con servicios asignados.');db.units.splice(i,1);save()}
-function addOp(){let n=$('onombre').value.trim();if(!n)return alert('Captura el operador.');if(db.ops.some(x=>x.name.toLowerCase()===n.toLowerCase()))return alert('Ese operador ya existe.');db.ops.push({name:n,status:$('oestado').value});save();$('onombre').value=''}
+async function addOp(){let n=$('nombre').value.trim();if(!n)return alert('Captura el operador.');if(db.ops.some(x=>x.name.toLowerCase()===n.toLowerCase()))return alert('Ese operador ya existe.');const {error}=await supabaseClient.from('operadores').insert({nombre:n,estado:'Disponible'});if(error)return alert('SUPABASE OPERADORES: '+error.message);db.ops.push({name:n,status:'Disponible'});save();render()}
 function delOp(i){if(db.trips.some(t=>t.operator===db.ops[i].name))return alert('No se puede eliminar un operador con servicios asignados.');db.ops.splice(i,1);save()}
 function saveCfg(){['ll','lu','nl','nu2','hl','hu','buf','cut','ee','efe'].forEach(k=>db.config[k]=+$(k).value);db.config.es=$('es').value;db.config.efs=$('efs').value;save();alert('Configuración guardada.')}
 function resetCfg(){db.config=JSON.parse(JSON.stringify(DEF.config));save();cfgForm()}
