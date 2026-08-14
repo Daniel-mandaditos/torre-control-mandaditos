@@ -360,9 +360,9 @@ async function cargarDatos(){
 
     folio:t.folio||'',
 
-    date:t.fecha,
+   date:String(t.fecha||'').slice(0,10),
 
-    time:t.hora,
+   time:String(t.hora||'').slice(0,5),
 
     ocp:t.cp_carga||'',
 
