@@ -174,17 +174,21 @@ function extra(t){
 }
 
 function end(t){
-  let d=new Date(t.date+'T'+t.time+':00');
+  let fecha=String(t.date||'').slice(0,10);
+  let hora=String(t.time||'').slice(0,5);
+
+  let d=new Date(fecha+'T'+hora+':00');
 
   d.setMinutes(
     d.getMinutes()+
-    +t.travel+
+    Number(t.travel||0)+
     dur(t.type)+
-    extra(t.time)
+    extra(hora)
   );
 
   return d;
 }
+  
 
 function endTime(t){
   return end(t).toTimeString().slice(0,5);
