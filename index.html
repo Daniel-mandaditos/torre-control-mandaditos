@@ -139,10 +139,11 @@ async function assign(t){
   }
 
   const {data:unidad,error:errUnidad}=await supabaseClient
-    .from('unidades')
-    .select('id')
-    .eq('nombre',t.unit)
-    .maybeSingle();
+  .from('unidades')
+  .select('id,nombre,estado')
+  .eq('nombre',String(t.unit).trim())
+  .limit(1)
+  .maybeSingle();
 
   if(errUnidad||!unidad){
     alert('SUPABASE UNIDADES: '+(errUnidad ? errUnidad.message : 'La consulta funcionó, pero no encontró "'+t.unit+'"'));
