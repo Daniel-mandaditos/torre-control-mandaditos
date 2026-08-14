@@ -25,6 +25,7 @@ input,select{width:100%;padding:9px;border:1px solid #cbd5df;border-radius:7px;b
 .calendar{overflow:auto}.cal{display:grid;grid-template-columns:82px repeat(4,minmax(190px,1fr));min-width:850px;border:1px solid var(--l);border-radius:10px;overflow:hidden}.ch{background:var(--n);color:#fff;padding:9px;text-align:center;font-weight:bold;border-right:1px solid #ffffff33}.ct{background:#edf3f8;color:var(--n);font-weight:bold;padding:8px;border-right:1px solid var(--l);border-bottom:1px solid var(--l)}.cc{min-height:70px;padding:6px;background:#fff;border-right:1px solid var(--l);border-bottom:1px solid var(--l)}.trip{background:#e8f4ec;border-left:5px solid var(--g);border-radius:7px;padding:8px;font-size:12px}.trip b{color:var(--n)}.empty{font-size:11px;color:#9aa7b2;padding:9px}.footer{text-align:center;color:var(--m);font-size:11px;padding:20px}
 @media(max-width:1000px){.grid,.form,.unit-options{grid-template-columns:repeat(2,1fr)}}@media(max-width:600px){.grid,.form,.unit-options{grid-template-columns:1fr}header{display:block}.badge{display:inline-block;margin-top:10px}}
 </style>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
 <header><div><h1>TORRE DE CONTROL — MANDADITOS</h1><p>V4.4.1 · Capacidad por ventanas · Código postal · Tiempo manual</p></div><div class="badge">VERSIÓN DE TRABAJO</div></header>
@@ -80,6 +81,9 @@ input,select{width:100%;padding:9px;border:1px solid #cbd5df;border-radius:7px;b
 
 <script>
 'use strict';
+const SUPABASE_URL = 'https://wjivpftugvyaxzftzhx.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_Ei_9U5-CjfNP-Et8UT2uUA_5T075uDj'; 
+const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);  
 const KEY='mandaditos_torre_v44',OLD='mandaditos_torre_v43_manual';
 const DEF={config:{ll:10,lu:10,nl:20,nu2:20,hl:40,hu:40,buf:15,cut:20,es:'15:00',efs:'16:00',ee:5,efe:10},units:[{name:'Changan',status:'Disponible'},{name:'Tornado',status:'Disponible'},{name:'S10-08 Caja Seca',status:'Disponible'},{name:'S10-12 Redilas',status:'Disponible'}],ops:[],trips:[]};
 let db=load();
@@ -128,7 +132,62 @@ function evaluar(){
   let w=win(n.time),html=`<div class="result"><h3>${esc(n.folio)} · ${n.time}–${label(w.e)}</h3><ul><li>CP carga: <b>${n.ocp}</b> · CP entrega: <b>${n.dcp}</b></li><li>Tipo: <b>${n.type}</b></li><li>Trayecto: <b>${n.travel} min</b></li><li>Carga + descarga: <b>${dur(n.type)-db.config.buf} min</b></li><li>Colchón: <b>${db.config.buf} min</b></li><li>Margen vespertino: <b>+${extra(n.time)} min</b></li><li>Fin estimado: <b>${endTime(n)}</b></li><li>Corte de ventana: <b>${label(w.c)}</b></li></ul></div><div class="card"><h2>Opciones por unidad</h2><div class="unit-options">`;
   groups.forEach(g=>{html+=`<div class="unit"><h3>${esc(g.u.name)}</h3>`;g.arr.slice(0,6).forEach(x=>{html+=`<div class="option ${x.r.st==='green'?'ok':'no'}"><span class="status ${x.r.st}">${x.r.txt}</span> <b>${esc(x.o.name)}</b><br><span class="muted">${esc(x.r.a.why)} ${esc(x.r.b.why)}</span>${x.r.st==='green'?`<button onclick='assign(${JSON.stringify({...n,unit:x.u.name,operator:x.o.name})})'>ASIGNAR</button>`:''}</div>`});html+='</div>'});html+='</div></div>';$('resultado').innerHTML=html
 }
-function assign(t){if(db.trips.some(x=>x.folio===t.folio)){alert('Ese folio ya fue asignado.');return}db.trips.push(t);save();$('caldate').value=t.date;tab('agenda',document.querySelectorAll('.tab')[2]);calendar();alert(`${t.folio} asignado a ${t.unit}, ${t.time}–${label(win(t.time).e)}.`)}
+async function assign(t){
+  if(db.trips.some(x=>x.folio===t.folio)){
+    alert('Ese folio ya fue asignado.');
+    return;
+  }
+
+  const {data:unidad,error:errUnidad}=await supabaseClient
+    .from('unidades')
+    .select('id')
+    .eq('nombre',t.unit)
+    .maybeSingle();
+
+  if(errUnidad||!unidad){
+    alert('No se encontró la unidad en Supabase: '+t.unit);
+    return;
+  }
+
+  const {data:operador,error:errOperador}=await supabaseClient
+    .from('operadores')
+    .select('id')
+    .eq('nombre',t.operator)
+    .maybeSingle();
+
+  if(errOperador||!operador){
+    alert('No se encontró el operador en Supabase: '+t.operator);
+    return;
+  }
+
+  const {error}=await supabaseClient
+    .from('servicios')
+    .insert({
+      folio:t.folio,
+      fecha:t.date,
+      hora:t.time,
+      cp_carga:t.ocp,
+      cp_entrega:t.dcp,
+      tipo_carga:t.type,
+      trayecto_minutos:Number(t.travel)||0,
+      unidad_id:unidad.id,
+      operador_id:operador.id,
+      unidad_nombre:t.unit,
+      operador_nombre:t.operator
+    });
+
+  if(error){
+    alert('No se pudo guardar en Supabase: '+error.message);
+    return;
+  }
+
+  db.trips.push(t);
+  save();
+
+  $('calendate').value=t.date;
+  tab('agenda',document.querySelectorAll('.tab')[2]);
+  calendar();
+}
 function limpiar(){$('resultado').innerHTML=''}
 function addUnit(){let n=$('unombre').value.trim();if(!n)return alert('Captura la unidad.');if(db.units.some(x=>x.name.toLowerCase()===n.toLowerCase()))return alert('Esa unidad ya existe.');db.units.push({name:n,status:$('uestado').value});save();$('unombre').value=''}
 function delUnit(i){if(db.trips.some(t=>t.unit===db.units[i].name))return alert('No se puede eliminar una unidad con servicios asignados.');db.units.splice(i,1);save()}
